@@ -4,7 +4,8 @@ import {
   STORAGE_KEYS,
   type ExtensionMessage,
   type ExtensionState,
-  type LanguagePreference
+  type LanguagePreference,
+  type SpeedStrategy
 } from "../shared/messages";
 import {
   getDefaultLanguage,
@@ -45,6 +46,10 @@ const speedVisibleLabel = getElement<HTMLElement>("speedVisibleLabel");
 const speedVisibleMessages = getElement<HTMLInputElement>("speedVisibleMessages");
 const speedBatchLabel = getElement<HTMLElement>("speedBatchLabel");
 const speedBatchMessages = getElement<HTMLInputElement>("speedBatchMessages");
+const speedStrategyLabel = getElement<HTMLElement>("speedStrategyLabel");
+const speedStrategyAfter = getElement<HTMLButtonElement>("speedStrategyAfter");
+const speedStrategyPrehide = getElement<HTMLButtonElement>("speedStrategyPrehide");
+const speedMetric = getElement<HTMLElement>("speedMetric");
 const speedSettingsSave = getElement<HTMLButtonElement>("speedSettingsSave");
 const speedSettingsSaved = getElement<HTMLElement>("speedSettingsSaved");
 const hint = getElement<HTMLElement>("hint");
@@ -89,6 +94,14 @@ speedModeToggle.addEventListener("click", () => {
 
 speedSettingsSave.addEventListener("click", () => {
   void saveSpeedSettings();
+});
+
+speedStrategyAfter.addEventListener("click", () => {
+  void setSpeedStrategy("after-render");
+});
+
+speedStrategyPrehide.addEventListener("click", () => {
+  void setSpeedStrategy("prehide");
 });
 
 selectAll.addEventListener("click", () => {
@@ -211,6 +224,8 @@ function renderState(state: ExtensionState): void {
   speedModeToggle.disabled = state.isDeleting;
   speedVisibleMessages.disabled = state.isDeleting;
   speedBatchMessages.disabled = state.isDeleting;
+  speedStrategyAfter.disabled = state.isDeleting;
+  speedStrategyPrehide.disabled = state.isDeleting;
   speedSettingsSave.disabled = state.isDeleting;
 }
 
@@ -231,6 +246,8 @@ function renderUnavailable(): void {
   speedModeToggle.setAttribute("aria-checked", String(FIRST_RUN_DEFAULTS.speedMode));
   speedVisibleMessages.value = String(FIRST_RUN_DEFAULTS.speedVisibleMessages);
   speedBatchMessages.value = String(FIRST_RUN_DEFAULTS.speedBatchMessages);
+  renderSpeedStrategy(FIRST_RUN_DEFAULTS.speedStrategy);
+  speedMetric.textContent = t("popupSpeedMetricPending");
   speedModeSummary.textContent = t("popupSpeedSummary", {
     visible: FIRST_RUN_DEFAULTS.speedVisibleMessages,
     batch: FIRST_RUN_DEFAULTS.speedBatchMessages
@@ -246,6 +263,8 @@ function renderUnavailable(): void {
   speedModeToggle.disabled = true;
   speedVisibleMessages.disabled = true;
   speedBatchMessages.disabled = true;
+  speedStrategyAfter.disabled = true;
+  speedStrategyPrehide.disabled = true;
   speedSettingsSave.disabled = true;
 }
 
@@ -263,6 +282,8 @@ function setBusy(isBusy: boolean): void {
   speedModeToggle.disabled = isBusy || !state;
   speedVisibleMessages.disabled = isBusy || !state;
   speedBatchMessages.disabled = isBusy || !state;
+  speedStrategyAfter.disabled = isBusy || !state;
+  speedStrategyPrehide.disabled = isBusy || !state;
   speedSettingsSave.disabled = isBusy || !state;
 }
 
@@ -306,6 +327,9 @@ function applyStaticCopy(): void {
   speedSettings.setAttribute("aria-label", t("popupSpeedSettingsAria"));
   speedVisibleLabel.textContent = t("popupSpeedVisibleLabel");
   speedBatchLabel.textContent = t("popupSpeedBatchLabel");
+  speedStrategyLabel.textContent = t("popupSpeedStrategyLabel");
+  speedStrategyAfter.textContent = t("popupSpeedStrategyAfter");
+  speedStrategyPrehide.textContent = t("popupSpeedStrategyPrehide");
   speedSettingsSave.textContent = t("popupSpeedSave");
   hint.textContent = t("popupHintInitial");
 }
@@ -332,12 +356,29 @@ async function persistLanguagePreference(language: LanguagePreference): Promise<
 function renderSpeedSettings(state: ExtensionState): void {
   speedVisibleMessages.value = String(state.speedVisibleMessages);
   speedBatchMessages.value = String(state.speedBatchMessages);
+  renderSpeedStrategy(state.speedStrategy);
+  speedMetric.textContent =
+    state.speedRenderMs === null
+      ? t("popupSpeedMetricPending")
+      : t("popupSpeedMetric", { seconds: formatSeconds(state.speedRenderMs) });
   speedModeSummary.textContent = t("popupSpeedSummary", {
     visible: state.speedVisibleMessages,
     batch: state.speedBatchMessages
   });
   speedSettings.hidden = !state.speedMode;
   speedSettingsSaved.textContent = "";
+}
+
+function renderSpeedStrategy(strategy: SpeedStrategy): void {
+  speedStrategyAfter.setAttribute("aria-pressed", String(strategy === "after-render"));
+  speedStrategyPrehide.setAttribute("aria-pressed", String(strategy === "prehide"));
+}
+
+async function setSpeedStrategy(strategy: SpeedStrategy): Promise<void> {
+  await sendAndRender({
+    type: MESSAGE_TYPES.setSpeedStrategy,
+    strategy
+  });
 }
 
 async function saveSpeedSettings(): Promise<void> {
@@ -357,6 +398,10 @@ async function saveSpeedSettings(): Promise<void> {
 
 function clampNumber(value: number, min: number, max: number): number {
   return Number.isFinite(value) ? Math.min(max, Math.max(min, Math.floor(value))) : min;
+}
+
+function formatSeconds(ms: number): string {
+  return (ms / 1000).toFixed(2);
 }
 
 function getElement<T extends HTMLElement>(id: string): T {

@@ -1,4 +1,5 @@
 import { t, type LanguageCode } from "./i18n";
+import type { SpeedStrategy } from "../shared/messages";
 
 export const SPEED_BRIDGE_KEY = "gptbd.speedBridge.v2";
 export const SPEED_DEFAULTS = {
@@ -20,6 +21,9 @@ const MESSAGE_SELECTOR = [
 const HIDDEN_ATTR = "data-gptbd-speed-hidden";
 const HIDDEN_CLASS = "gptbd-speed-hidden";
 const PANEL_CLASS = "gptbd-speed-panel";
+const PREHIDE_ATTR = "data-gptbd-speed-prehide";
+const VISIBLE_ATTR = "data-gptbd-speed-visible";
+const METRIC_SETTLE_MS = 350;
 
 type AnchorSnapshot = {
   element: HTMLElement;
@@ -27,10 +31,16 @@ type AnchorSnapshot = {
   scroller: HTMLElement | Window;
 };
 
+type InitialRenderMetric = {
+  messageCount: number;
+  ms: number;
+};
+
 export class SpeedControls {
   private enabled = false;
   private language: LanguageCode = "en";
   private settings: SpeedSettings = { ...SPEED_DEFAULTS };
+  private strategy: SpeedStrategy = "after-render";
   private currentConversationId: string | null = null;
   private root: HTMLElement | null = null;
   private mutationObserver: MutationObserver | null = null;
@@ -39,11 +49,21 @@ export class SpeedControls {
   private urlPoll: number | null = null;
   private visibleLimits = new Map<string, number>();
   private historyPatched = false;
+  private routeStartedAt = 0;
+  private metricTimer: number | null = null;
+  private initialRenderMetric: InitialRenderMetric | null = null;
 
-  init(enabled: boolean, language: LanguageCode, settings: SpeedSettings): void {
+  init(
+    enabled: boolean,
+    language: LanguageCode,
+    settings: SpeedSettings,
+    strategy: SpeedStrategy
+  ): void {
     this.enabled = enabled;
     this.language = language;
     this.settings = settings;
+    this.strategy = strategy;
+    this.applyPrehideState();
     this.writeBridge();
     this.bindObservers();
     this.scheduleRefresh();
@@ -55,6 +75,7 @@ export class SpeedControls {
     }
 
     this.enabled = enabled;
+    this.applyPrehideState();
     this.writeBridge();
 
     if (enabled) {
@@ -67,6 +88,18 @@ export class SpeedControls {
 
   setLanguage(language: LanguageCode): void {
     this.language = language;
+    this.scheduleRefresh();
+  }
+
+  setStrategy(strategy: SpeedStrategy): void {
+    if (this.strategy === strategy) {
+      return;
+    }
+
+    this.strategy = strategy;
+    this.clearMetric();
+    this.applyPrehideState();
+    this.writeBridge();
     this.scheduleRefresh();
   }
 
@@ -87,6 +120,14 @@ export class SpeedControls {
     return this.enabled;
   }
 
+  getStrategy(): SpeedStrategy {
+    return this.strategy;
+  }
+
+  getInitialRenderMetric(): InitialRenderMetric | null {
+    return this.initialRenderMetric;
+  }
+
   private bindObservers(): void {
     if (!this.mutationObserver) {
       this.mutationObserver = new MutationObserver((mutations) => {
@@ -96,7 +137,7 @@ export class SpeedControls {
 
         this.scheduleRefresh();
       });
-      this.mutationObserver.observe(document.body, { childList: true, subtree: true });
+      this.mutationObserver.observe(document.documentElement, { childList: true, subtree: true });
     }
 
     if (!this.historyPatched) {
@@ -127,7 +168,10 @@ export class SpeedControls {
 
     this.lastUrl = window.location.href;
     this.currentConversationId = null;
+    this.routeStartedAt = performance.now();
+    this.clearMetric();
     this.cleanup(false);
+    this.applyPrehideState();
     this.scheduleRefresh();
   }
 
@@ -145,30 +189,35 @@ export class SpeedControls {
 
   private refresh(preserveAnchor: boolean): void {
     if (!this.enabled) {
+      this.setPrehideActive(false);
       this.cleanup(true);
       return;
     }
 
     if (!isConversationPage()) {
+      this.setPrehideActive(false);
       this.cleanup(false);
       return;
     }
 
+    this.applyPrehideState();
     const conversationId = getConversationIdFromLocation();
     const messages = queryMessages();
 
     if (!conversationId || messages.length === 0) {
-      this.cleanup(false);
+      this.cleanupPanel();
       return;
     }
 
     if (this.currentConversationId !== conversationId) {
       this.currentConversationId = conversationId;
+      this.clearMetric();
     }
 
     const visibleLimit = this.getVisibleLimit(conversationId, messages.length);
     this.applyVisibility(messages, visibleLimit, preserveAnchor);
     this.render(messages, visibleLimit);
+    this.scheduleInitialMetric(conversationId, messages.length);
   }
 
   private getVisibleLimit(conversationId: string, totalMessages: number): number {
@@ -230,10 +279,17 @@ export class SpeedControls {
     const viewAll = this.root.querySelector<HTMLButtonElement>(".gptbd-speed-view-all");
 
     if (summary) {
-      summary.textContent = t("speedHiddenSummary", {
+      const baseSummary = t("speedHiddenSummary", {
         hidden: hiddenRemaining,
         visible: shownCount
       });
+      const strategyLabel = t(
+        this.strategy === "prehide" ? "speedStrategyPrehide" : "speedStrategyAfter"
+      );
+      const metricLabel = this.initialRenderMetric
+        ? t("speedRenderMetric", { seconds: formatSeconds(this.initialRenderMetric.ms) })
+        : t("speedRenderPending");
+      summary.textContent = `${baseSummary} · ${strategyLabel} · ${metricLabel}`;
     }
 
     if (toolbar) {
@@ -318,12 +374,17 @@ export class SpeedControls {
   }
 
   private cleanup(restoreMessages: boolean): void {
-    this.root?.remove();
-    this.root = null;
+    this.cleanupPanel();
 
     if (restoreMessages) {
+      this.setPrehideActive(false);
       this.restoreManagedMessages();
     }
+  }
+
+  private cleanupPanel(): void {
+    this.root?.remove();
+    this.root = null;
   }
 
   private restoreManagedMessages(): void {
@@ -339,11 +400,56 @@ export class SpeedControls {
     );
   }
 
+  private scheduleInitialMetric(conversationId: string, messageCount: number): void {
+    if (this.initialRenderMetric) {
+      return;
+    }
+
+    if (this.metricTimer) {
+      window.clearTimeout(this.metricTimer);
+    }
+
+    this.metricTimer = window.setTimeout(() => {
+      this.metricTimer = null;
+
+      if (!this.enabled || this.currentConversationId !== conversationId) {
+        return;
+      }
+
+      const stableCount = queryMessages().length || messageCount;
+      this.initialRenderMetric = {
+        messageCount: stableCount,
+        ms: Math.max(0, performance.now() - this.routeStartedAt)
+      };
+      this.scheduleRefresh();
+    }, METRIC_SETTLE_MS);
+  }
+
+  private clearMetric(): void {
+    if (this.metricTimer) {
+      window.clearTimeout(this.metricTimer);
+      this.metricTimer = null;
+    }
+
+    this.initialRenderMetric = null;
+  }
+
+  private applyPrehideState(): void {
+    this.setPrehideActive(
+      this.enabled && this.strategy === "prehide" && isConversationPage()
+    );
+  }
+
+  private setPrehideActive(active: boolean): void {
+    document.documentElement.toggleAttribute(PREHIDE_ATTR, active);
+  }
+
   private writeBridge(): void {
     const settings = {
-      enabled: false,
+      enabled: this.enabled,
       visibleMessages: this.settings.visibleMessages,
       batchMessages: this.settings.batchMessages,
+      strategy: this.strategy,
       mode: "dom-hide"
     };
 
@@ -361,6 +467,28 @@ export class SpeedControls {
       },
       "*"
     );
+  }
+}
+
+export function applySpeedBootstrap(): void {
+  try {
+    const raw = localStorage.getItem(SPEED_BRIDGE_KEY);
+
+    if (!raw) {
+      return;
+    }
+
+    const parsed = JSON.parse(raw) as {
+      enabled?: unknown;
+      strategy?: unknown;
+    };
+    const shouldPrehide =
+      parsed.enabled === true &&
+      parsed.strategy === "prehide" &&
+      isConversationPage();
+    document.documentElement.toggleAttribute(PREHIDE_ATTR, shouldPrehide);
+  } catch {
+    document.documentElement.removeAttribute(PREHIDE_ATTR);
   }
 }
 
@@ -382,23 +510,33 @@ function queryMessages(): HTMLElement[] {
 }
 
 function hideMessage(element: HTMLElement): void {
-  if (element.getAttribute(HIDDEN_ATTR) === "true") {
-    return;
-  }
-
   element.classList.add(HIDDEN_CLASS);
   element.setAttribute(HIDDEN_ATTR, "true");
+  setVisibleMarker(element, false);
   element.setAttribute("aria-hidden", "true");
 }
 
 function showMessage(element: HTMLElement): void {
-  if (element.getAttribute(HIDDEN_ATTR) !== "true") {
-    return;
-  }
-
   element.classList.remove(HIDDEN_CLASS);
   element.removeAttribute(HIDDEN_ATTR);
+  setVisibleMarker(element, true);
   element.removeAttribute("aria-hidden");
+}
+
+function setVisibleMarker(element: HTMLElement, visible: boolean): void {
+  const targets = [
+    element,
+    ...Array.from(element.querySelectorAll<HTMLElement>(MESSAGE_SELECTOR))
+  ];
+
+  targets.forEach((target) => {
+    if (visible) {
+      target.setAttribute(VISIBLE_ATTR, "true");
+      return;
+    }
+
+    target.removeAttribute(VISIBLE_ATTR);
+  });
 }
 
 function captureAnchor(messages: HTMLElement[]): AnchorSnapshot | null {
@@ -454,6 +592,10 @@ function findScrollContainer(element: HTMLElement): HTMLElement | Window {
 
 function isSpeedHidden(element: HTMLElement): boolean {
   return element.getAttribute(HIDDEN_ATTR) === "true";
+}
+
+function formatSeconds(ms: number): string {
+  return (ms / 1000).toFixed(2);
 }
 
 function isSpeedPanelNode(node: Node): boolean {

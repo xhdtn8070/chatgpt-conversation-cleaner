@@ -65,7 +65,11 @@ const EN_MESSAGES = {
   },
   speedLoadMore: { message: "Load $count more", placeholders: ["count"] },
   speedViewAll: { message: "View all" },
-  speedAllShown: { message: "All shown" }
+  speedAllShown: { message: "All shown" },
+  speedStrategyAfter: { message: "A current" },
+  speedStrategyPrehide: { message: "B prehide" },
+  speedRenderPending: { message: "measuring" },
+  speedRenderMetric: { message: "$seconds s", placeholders: ["seconds"] }
 } as const satisfies Record<string, MessageDefinition>;
 
 export type MessageKey = keyof typeof EN_MESSAGES;
@@ -128,7 +132,11 @@ const KO_MESSAGES: Record<MessageKey, MessageDefinition> = {
   },
   speedLoadMore: { message: "$count개 더 보기", placeholders: ["count"] },
   speedViewAll: { message: "전체 보기" },
-  speedAllShown: { message: "모두 표시됨" }
+  speedAllShown: { message: "모두 표시됨" },
+  speedStrategyAfter: { message: "A 기존" },
+  speedStrategyPrehide: { message: "B 선숨김" },
+  speedRenderPending: { message: "측정 중" },
+  speedRenderMetric: { message: "$seconds초", placeholders: ["seconds"] }
 };
 
 let activeLanguage = getDefaultLanguage();

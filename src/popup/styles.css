@@ -269,6 +269,48 @@ strong {
   font-weight: 700;
 }
 
+.speed-strategy {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 6px;
+  min-width: 0;
+}
+
+.speed-strategy > span,
+.speed-metric {
+  color: color-mix(in srgb, CanvasText 62%, transparent);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.segmented-control {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  min-width: 0;
+  padding: 3px;
+  border: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
+  border-radius: 7px;
+  background: color-mix(in srgb, CanvasText 4%, Canvas);
+}
+
+.segmented-control button {
+  min-height: 30px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+}
+
+.segmented-control button[aria-pressed="true"] {
+  background: #0f7a55;
+  color: white;
+}
+
+.speed-metric {
+  align-self: center;
+  min-height: 14px;
+}
+
 .saved-status {
   align-self: center;
   min-height: 14px;

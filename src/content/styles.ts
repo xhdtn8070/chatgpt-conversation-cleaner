@@ -211,6 +211,12 @@ html.gptbd-bulk-active [data-gptbd-force-menu="true"] button[aria-label*="option
   visibility: visible !important;
 }
 
+html[data-gptbd-speed-prehide="true"] main article[data-testid^="conversation-turn-"]:not([data-gptbd-speed-visible="true"]),
+html[data-gptbd-speed-prehide="true"] main section[data-testid^="conversation-turn-"]:not([data-gptbd-speed-visible="true"]),
+html[data-gptbd-speed-prehide="true"] main div[data-testid^="conversation-turn-"]:not([data-gptbd-speed-visible="true"]) {
+  display: none !important;
+}
+
 [data-gptbd-action-bar="true"] {
   position: relative !important;
   z-index: 1 !important;

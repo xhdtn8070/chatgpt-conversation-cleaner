@@ -4,7 +4,8 @@ import type {
   DeleteItemResult,
   DeleteSummary,
   ExtensionMessage,
-  ExtensionState
+  ExtensionState,
+  SpeedStrategy
 } from "../shared/messages";
 import {
   getDefaultLanguage,
@@ -15,7 +16,12 @@ import {
   type MessageKey
 } from "./i18n";
 import { clearSelection, removeSelected, selectAll, toggleSelection } from "./selection";
-import { SPEED_DEFAULTS, SpeedControls, type SpeedSettings } from "./speed-controls";
+import {
+  applySpeedBootstrap,
+  SPEED_DEFAULTS,
+  SpeedControls,
+  type SpeedSettings
+} from "./speed-controls";
 import { DOCUMENT_CSS, SHADOW_CSS } from "./styles";
 
 const ROOT_ID = "gptbd-root";
@@ -27,7 +33,8 @@ const STORAGE_KEYS = {
   sidebarControls: "gptbd.sidebarControls",
   speedMode: "gptbd.speedMode",
   speedVisibleMessages: "gptbd.speedVisibleMessages",
-  speedBatchMessages: "gptbd.speedBatchMessages"
+  speedBatchMessages: "gptbd.speedBatchMessages",
+  speedStrategy: "gptbd.speedStrategy"
 } as const;
 const FIRST_RUN_DEFAULTS = {
   extensionEnabled: true,
@@ -35,7 +42,8 @@ const FIRST_RUN_DEFAULTS = {
   sidebarControls: true,
   speedMode: false,
   speedVisibleMessages: 10,
-  speedBatchMessages: 5
+  speedBatchMessages: 5,
+  speedStrategy: "after-render" as SpeedStrategy
 } as const;
 const MESSAGE_TYPES = {
   getState: "GPTBD_GET_STATE",
@@ -45,6 +53,7 @@ const MESSAGE_TYPES = {
   setSidebarControls: "GPTBD_SET_SIDEBAR_CONTROLS",
   setSpeedMode: "GPTBD_SET_SPEED_MODE",
   setSpeedSettings: "GPTBD_SET_SPEED_SETTINGS",
+  setSpeedStrategy: "GPTBD_SET_SPEED_STRATEGY",
   selectAllVisible: "GPTBD_SELECT_ALL_VISIBLE",
   clearSelection: "GPTBD_CLEAR_SELECTION",
   archiveSelected: "GPTBD_ARCHIVE_SELECTED",
@@ -123,6 +132,7 @@ class BulkDeleteController {
   private sidebarControls = true;
   private speedMode = false;
   private speedSettings: SpeedSettings = { ...SPEED_DEFAULTS };
+  private speedStrategy: SpeedStrategy = FIRST_RUN_DEFAULTS.speedStrategy;
   private selectedIds = new Set<string>();
   private rows = new Map<string, ConversationRow>();
   private speedControls = new SpeedControls();
@@ -170,6 +180,7 @@ class BulkDeleteController {
 
   constructor() {
     injectDocumentStyle();
+    applySpeedBootstrap();
 
     this.host = document.getElementById(ROOT_ID) ?? document.createElement("div");
     this.host.id = ROOT_ID;
@@ -226,6 +237,9 @@ class BulkDeleteController {
       FIRST_RUN_DEFAULTS.sidebarControls
     );
     this.speedMode = await storageGet(STORAGE_KEYS.speedMode, FIRST_RUN_DEFAULTS.speedMode);
+    this.speedStrategy = normalizeSpeedStrategy(
+      await storageGet(STORAGE_KEYS.speedStrategy, FIRST_RUN_DEFAULTS.speedStrategy)
+    );
     this.speedSettings = {
       visibleMessages: clampNumber(
         await storageGet(STORAGE_KEYS.speedVisibleMessages, FIRST_RUN_DEFAULTS.speedVisibleMessages),
@@ -242,10 +256,15 @@ class BulkDeleteController {
     };
     setActiveLanguage(this.language);
     this.syncStaticI18n();
-    this.speedControls.init(this.extensionEnabled && this.speedMode, this.language, this.speedSettings);
+    this.speedControls.init(
+      this.extensionEnabled && this.speedMode,
+      this.language,
+      this.speedSettings,
+      this.speedStrategy
+    );
     this.bindRuntimeMessages();
     this.bindPageListeners();
-    this.observer.observe(document.body, { childList: true, subtree: true });
+    this.observer.observe(document.documentElement, { childList: true, subtree: true });
     this.refresh();
     document.documentElement.dataset.gptbdReady = "true";
   }
@@ -263,6 +282,9 @@ class BulkDeleteController {
       speedMode: this.speedMode,
       speedVisibleMessages: this.speedSettings.visibleMessages,
       speedBatchMessages: this.speedSettings.batchMessages,
+      speedStrategy: this.speedStrategy,
+      speedRenderMs: this.speedControls.getInitialRenderMetric()?.ms ?? null,
+      speedRenderMessageCount: this.speedControls.getInitialRenderMetric()?.messageCount ?? 0,
       lastDeleteSummary: this.lastDeleteSummary
     };
   }
@@ -324,6 +346,19 @@ class BulkDeleteController {
     this.speedMode = enabled;
     void storageSet(STORAGE_KEYS.speedMode, enabled);
     await this.speedControls.setEnabled(this.extensionEnabled && enabled);
+    return this.getState();
+  }
+
+  async setSpeedStrategy(strategy: SpeedStrategy): Promise<ExtensionState> {
+    const nextStrategy = normalizeSpeedStrategy(strategy);
+
+    if (this.speedStrategy === nextStrategy) {
+      return this.getState();
+    }
+
+    this.speedStrategy = nextStrategy;
+    void storageSet(STORAGE_KEYS.speedStrategy, nextStrategy);
+    this.speedControls.setStrategy(nextStrategy);
     return this.getState();
   }
 
@@ -401,6 +436,9 @@ class BulkDeleteController {
             speedMode: this.speedMode,
             speedVisibleMessages: this.speedSettings.visibleMessages,
             speedBatchMessages: this.speedSettings.batchMessages,
+            speedStrategy: this.speedStrategy,
+            speedRenderMs: this.speedControls.getInitialRenderMetric()?.ms ?? null,
+            speedRenderMessageCount: this.speedControls.getInitialRenderMetric()?.messageCount ?? 0,
             error: getErrorMessage(error)
           });
         });
@@ -429,6 +467,8 @@ class BulkDeleteController {
           visibleMessages: message.visibleMessages,
           batchMessages: message.batchMessages
         });
+      case MESSAGE_TYPES.setSpeedStrategy:
+        return this.setSpeedStrategy(message.strategy);
       case MESSAGE_TYPES.selectAllVisible:
         return this.selectAllVisible();
       case MESSAGE_TYPES.clearSelection:
@@ -1747,6 +1787,10 @@ function clampNumber(value: unknown, min: number, max: number, fallback: number)
   return typeof value === "number" && Number.isFinite(value)
     ? Math.min(max, Math.max(min, Math.floor(value)))
     : fallback;
+}
+
+function normalizeSpeedStrategy(value: unknown): SpeedStrategy {
+  return value === "prehide" ? "prehide" : "after-render";
 }
 
 function getErrorMessage(error: unknown): string {

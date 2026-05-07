@@ -108,6 +108,79 @@ test("speed mode hides old ChatGPT turns and reveals them without reload", async
   await expect.poll(() => apiCalls).toBe(1);
 });
 
+test("speed mode prehide strategy hides turns before exposing the recent batch", async ({ page }) => {
+  const conversation = buildConversation(30);
+  let apiCalls = 0;
+
+  await page.addInitScript(() => {
+    const storage: Record<string, unknown> = {
+      "gptbd.bulkMode": false,
+      "gptbd.speedMode": true,
+      "gptbd.speedVisibleMessages": 10,
+      "gptbd.speedBatchMessages": 5,
+      "gptbd.speedStrategy": "prehide",
+      "gptbd.sidebarControls": true
+    };
+
+    window.__speedApiCalls = 0;
+    window.chrome = {
+      storage: {
+        local: {
+          get(key: string, callback: (items: Record<string, unknown>) => void) {
+            callback({ [key]: storage[key] });
+          },
+          set(items: Record<string, unknown>, callback?: () => void) {
+            Object.assign(storage, items);
+            callback?.();
+          }
+        }
+      },
+      runtime: {
+        onMessage: {
+          addListener() {
+            return undefined;
+          }
+        }
+      }
+    } as unknown as typeof chrome;
+  });
+
+  await page.route("https://chatgpt.com/c/speed-alpha", async (route) => {
+    await route.fulfill({
+      contentType: "text/html",
+      body: conversationHtml()
+    });
+  });
+  await page.route("https://chatgpt.com/backend-api/conversation/speed-alpha", async (route) => {
+    apiCalls += 1;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify(conversation)
+    });
+  });
+
+  await page.goto("https://chatgpt.com/c/speed-alpha", { waitUntil: "domcontentloaded" });
+  await page.addScriptTag({ path: resolve("dist/assets/content.js") });
+  await page.waitForSelector("html[data-gptbd-ready='true']");
+  await expect(page.locator("html")).toHaveAttribute("data-gptbd-speed-prehide", "");
+
+  await page.waitForFunction(
+    () => document.querySelectorAll("section[data-testid^='conversation-turn-']").length === 30
+  );
+  await expect.poll(() => apiCalls).toBe(1);
+
+  await expect(page.getByText("20 older collapsed · 10 shown")).toBeVisible();
+  await expect(page.getByText("B prehide")).toBeVisible();
+  await expect(page.locator("section[data-gptbd-speed-hidden='true']")).toHaveCount(20);
+  await expect(page.locator("section[data-gptbd-speed-visible='true']")).toHaveCount(10);
+  await expect
+    .poll(() =>
+      page.evaluate(() => (window as typeof window & { __gptbdController?: { getState(): { speedRenderMs: number | null } } }).__gptbdController?.getState().speedRenderMs)
+    )
+    .not.toBeNull();
+});
+
 function conversationHtml(): string {
   return `<!doctype html>
 <html lang="en">

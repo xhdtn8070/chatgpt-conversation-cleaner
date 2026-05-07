@@ -17,7 +17,8 @@ test("popup switches between Korean and English UI", async ({ page }) => {
       "gptbd.sidebarControls": true,
       "gptbd.speedMode": false,
       "gptbd.speedVisibleMessages": 10,
-      "gptbd.speedBatchMessages": 5
+      "gptbd.speedBatchMessages": 5,
+      "gptbd.speedStrategy": "after-render"
     };
 
     window.__popupStorage = storage;
@@ -49,6 +50,7 @@ test("popup switches between Korean and English UI", async ({ page }) => {
             enabled?: boolean;
             visibleMessages?: number;
             batchMessages?: number;
+            strategy?: "after-render" | "prehide";
           }
         ) {
           if (message.type === "GPTBD_SET_LANGUAGE" && message.language) {
@@ -70,6 +72,9 @@ test("popup switches between Korean and English UI", async ({ page }) => {
             storage["gptbd.speedVisibleMessages"] = message.visibleMessages;
             storage["gptbd.speedBatchMessages"] = message.batchMessages;
           }
+          if (message.type === "GPTBD_SET_SPEED_STRATEGY") {
+            storage["gptbd.speedStrategy"] = message.strategy;
+          }
 
           return {
             available: true,
@@ -82,7 +87,10 @@ test("popup switches between Korean and English UI", async ({ page }) => {
             sidebarControls: storage["gptbd.sidebarControls"] ?? true,
             speedMode: storage["gptbd.speedMode"] ?? false,
             speedVisibleMessages: storage["gptbd.speedVisibleMessages"] ?? 10,
-            speedBatchMessages: storage["gptbd.speedBatchMessages"] ?? 5
+            speedBatchMessages: storage["gptbd.speedBatchMessages"] ?? 5,
+            speedStrategy: storage["gptbd.speedStrategy"] ?? "after-render",
+            speedRenderMs: 1234,
+            speedRenderMessageCount: 30
           };
         }
       }
@@ -137,6 +145,19 @@ test("popup switches between Korean and English UI", async ({ page }) => {
   );
   await expect(page.getByText("Recent 10 · Load 5 each")).toBeVisible();
   await expect(page.getByRole("region", { name: "Speed mode settings" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "A current" })).toHaveAttribute(
+    "aria-pressed",
+    "true"
+  );
+  await expect(page.getByText("Render: 1.23 s")).toBeVisible();
+  await page.getByRole("button", { name: "B prehide" }).click();
+  await expect(page.getByRole("button", { name: "B prehide" })).toHaveAttribute(
+    "aria-pressed",
+    "true"
+  );
+  await expect.poll(() => page.evaluate(() => window.__popupStorage["gptbd.speedStrategy"])).toBe(
+    "prehide"
+  );
   await page.getByLabel("Recent messages").fill("12");
   await page.getByLabel("Load more size").fill("3");
   await page.getByRole("button", { name: "Save" }).click();

@@ -52,6 +52,14 @@ const EN_MESSAGES = {
   popupSpeedSettingsAria: { message: "Speed mode settings" },
   popupSpeedVisibleLabel: { message: "Recent messages" },
   popupSpeedBatchLabel: { message: "Load more size" },
+  popupSpeedStrategyLabel: { message: "Experiment" },
+  popupSpeedStrategyAfter: { message: "A current" },
+  popupSpeedStrategyPrehide: { message: "B prehide" },
+  popupSpeedMetricPending: { message: "Render: measuring" },
+  popupSpeedMetric: {
+    message: "Render: $seconds s",
+    placeholders: ["seconds"]
+  },
   popupSpeedSave: { message: "Save" },
   popupSpeedSaved: { message: "Saved" },
   languageToggleAria: { message: "Switch language to $language", placeholders: ["language"] },
@@ -110,6 +118,14 @@ const KO_MESSAGES: Record<MessageKey, MessageDefinition> = {
   popupSpeedSettingsAria: { message: "속도 모드 설정" },
   popupSpeedVisibleLabel: { message: "최근 표시" },
   popupSpeedBatchLabel: { message: "더보기 개수" },
+  popupSpeedStrategyLabel: { message: "실험 방식" },
+  popupSpeedStrategyAfter: { message: "A 기존" },
+  popupSpeedStrategyPrehide: { message: "B 선숨김" },
+  popupSpeedMetricPending: { message: "렌더 측정 대기" },
+  popupSpeedMetric: {
+    message: "렌더 $seconds초",
+    placeholders: ["seconds"]
+  },
   popupSpeedSave: { message: "저장" },
   popupSpeedSaved: { message: "저장됨" },
   languageToggleAria: { message: "$language로 전환", placeholders: ["language"] },

@@ -26,7 +26,7 @@
     {
       "matches": ["https://chatgpt.com/*", "https://chat.openai.com/*"],
       "js": ["assets/content.js"],
-      "run_at": "document_end"
+      "run_at": "document_start"
     }
   ]
 }
