@@ -5,6 +5,7 @@ declare global {
   interface Window {
     __speedApiCalls: number;
     __gptbdToastWasVisibleBeforeRender?: boolean;
+    __gptbdToastTextBeforeRender?: string;
     __gptbdTurnsBeforeRender?: number;
   }
 }
@@ -70,8 +71,13 @@ test("speed mode hides old ChatGPT turns and reveals them without reload", async
   await expect.poll(() => apiCalls).toBe(1);
 
   await expect(page.locator(".gptbd-speed-toast")).toBeVisible();
-  await expect(page.locator(".gptbd-speed-toast")).toContainText(/Applying speed mode|Speed mode ready/);
+  await expect(page.locator(".gptbd-speed-toast")).toContainText(
+    "Showing the newest 10 of 30 messages first."
+  );
   await expect.poll(() => page.evaluate(() => window.__gptbdToastWasVisibleBeforeRender)).toBe(true);
+  await expect
+    .poll(() => page.evaluate(() => window.__gptbdToastTextBeforeRender))
+    .toContain("Preparing the long chat view.");
   await expect.poll(() => page.evaluate(() => window.__gptbdTurnsBeforeRender)).toBe(0);
   await expect(page.getByText("20 older collapsed · 10 shown")).toBeVisible();
   await expect(page.locator("section[data-gptbd-speed-hidden='true']")).toHaveCount(20);
@@ -226,7 +232,9 @@ function conversationHtml(): string {
         const data = await response.json();
         const thread = document.getElementById("thread");
         thread.replaceChildren();
-        window.__gptbdToastWasVisibleBeforeRender = Boolean(document.querySelector(".gptbd-speed-toast"));
+        const toast = document.querySelector(".gptbd-speed-toast");
+        window.__gptbdToastWasVisibleBeforeRender = Boolean(toast);
+        window.__gptbdToastTextBeforeRender = toast?.textContent || "";
         window.__gptbdTurnsBeforeRender = document.querySelectorAll("section[data-testid^='conversation-turn-']").length;
 
         for (const nodeId of visibleNodes(data)) {

@@ -66,6 +66,7 @@ export class SpeedControls {
   private toast: HTMLElement | null = null;
   private toastHideTimer: number | null = null;
   private toastConversationId: string | null = null;
+  private toastReadyConversationId: string | null = null;
   private pageBridgeBound = false;
   private handlePageBridgeMessage = (event: MessageEvent): void => {
     if (event.source !== window || !isConversationApiReadyMessage(event.data)) {
@@ -99,6 +100,7 @@ export class SpeedControls {
     if (enabled) {
       this.routeStartedAt = performance.now();
       this.toastConversationId = null;
+      this.toastReadyConversationId = null;
       this.clearMetric();
       this.scheduleRefresh();
       return;
@@ -124,6 +126,7 @@ export class SpeedControls {
       this.visibleLimits.clear();
       this.routeStartedAt = performance.now();
       this.toastConversationId = null;
+      this.toastReadyConversationId = null;
       this.clearMetric();
     }
 
@@ -189,6 +192,7 @@ export class SpeedControls {
     this.currentConversationId = null;
     this.routeStartedAt = performance.now();
     this.toastConversationId = null;
+    this.toastReadyConversationId = null;
     this.clearMetric();
     this.cleanup(false);
     this.scheduleRefresh();
@@ -233,6 +237,7 @@ export class SpeedControls {
     if (this.currentConversationId !== conversationId) {
       this.currentConversationId = conversationId;
       this.toastConversationId = null;
+      this.toastReadyConversationId = null;
       this.clearMetric();
     }
 
@@ -248,6 +253,7 @@ export class SpeedControls {
     const visibleLimit = this.getVisibleLimit(conversationId, messages.length);
     this.applyVisibility(messages, visibleLimit, preserveAnchor);
     this.render(messages, visibleLimit);
+    this.showReadyToast(conversationId, messages.length, Math.min(visibleLimit, messages.length));
     this.renderStatus = this.initialRenderMetric ? "complete" : "measuring";
     this.scheduleInitialMetric(conversationId, messages.length);
   }
@@ -452,10 +458,7 @@ export class SpeedControls {
     this.routeStartedAt = message.readyAt;
     this.clearMetric();
     this.renderStatus = "measuring";
-    this.showApplyingToast(
-      message.messageCount,
-      Math.min(message.visibleMessages, message.messageCount)
-    );
+    this.showApplyingToast();
     this.ackConversationApiReady(message.id);
   }
 
@@ -510,7 +513,7 @@ export class SpeedControls {
     this.initialRenderMetric = null;
   }
 
-  private showApplyingToast(totalMessages: number, visibleMessages: number): void {
+  private showApplyingToast(): void {
     if (this.initialRenderMetric) {
       return;
     }
@@ -518,11 +521,25 @@ export class SpeedControls {
     this.updateToast(
       "applying",
       t("speedToastApplyingTitle"),
-      t("speedToastApplyingBody", {
+      t("speedToastApplyingBody")
+    );
+  }
+
+  private showReadyToast(conversationId: string, totalMessages: number, visibleMessages: number): void {
+    if (this.toastConversationId !== conversationId || this.toastReadyConversationId === conversationId) {
+      return;
+    }
+
+    this.toastReadyConversationId = conversationId;
+    this.updateToast(
+      "complete",
+      t("speedToastReadyTitle"),
+      t("speedToastReadyBody", {
         total: totalMessages,
         visible: visibleMessages
       })
     );
+    this.hideToast(TOAST_HIDE_MS);
   }
 
   private updateToast(state: "applying" | "complete", title: string, body: string): void {

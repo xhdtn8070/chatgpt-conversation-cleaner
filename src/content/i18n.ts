@@ -69,7 +69,9 @@ const EN_MESSAGES = {
   speedRenderPending: { message: "measuring" },
   speedRenderMetric: { message: "$seconds s", placeholders: ["seconds"] },
   speedToastApplyingTitle: { message: "Applying speed mode" },
-  speedToastApplyingBody: {
+  speedToastApplyingBody: { message: "Preparing the long chat view." },
+  speedToastReadyTitle: { message: "Speed mode applied" },
+  speedToastReadyBody: {
     message: "Showing the newest $visible of $total messages first.",
     placeholders: ["visible", "total"]
   }
@@ -139,7 +141,9 @@ const KO_MESSAGES: Record<MessageKey, MessageDefinition> = {
   speedRenderPending: { message: "측정 중" },
   speedRenderMetric: { message: "$seconds초", placeholders: ["seconds"] },
   speedToastApplyingTitle: { message: "속도 모드 적용 중" },
-  speedToastApplyingBody: {
+  speedToastApplyingBody: { message: "긴 대화를 정리하고 있습니다." },
+  speedToastReadyTitle: { message: "속도 모드 적용됨" },
+  speedToastReadyBody: {
     message: "전체 $total개 중 최근 $visible개를 먼저 표시합니다.",
     placeholders: ["visible", "total"]
   }
