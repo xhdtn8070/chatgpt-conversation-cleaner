@@ -66,13 +66,9 @@ const EN_MESSAGES = {
   speedLoadMore: { message: "Load $count more", placeholders: ["count"] },
   speedViewAll: { message: "View all" },
   speedAllShown: { message: "All shown" },
-  speedUserRole: { message: "User" },
-  speedAssistantRole: { message: "Assistant" },
-  speedToolRole: { message: "Tool" },
-  speedUnknownRole: { message: "Message" },
-  speedTruncated: { message: "Content truncated for preview." },
-  speedExpandTurn: { message: "Show more" },
-  speedCollapseTurn: { message: "Collapse" }
+  speedRerenderBlocked: {
+    message: "Finish the active draft or response before loading more."
+  }
 } as const satisfies Record<string, MessageDefinition>;
 
 export type MessageKey = keyof typeof EN_MESSAGES;
@@ -136,13 +132,9 @@ const KO_MESSAGES: Record<MessageKey, MessageDefinition> = {
   speedLoadMore: { message: "$count개 더 보기", placeholders: ["count"] },
   speedViewAll: { message: "전체 보기" },
   speedAllShown: { message: "모두 표시됨" },
-  speedUserRole: { message: "사용자" },
-  speedAssistantRole: { message: "Assistant" },
-  speedToolRole: { message: "도구" },
-  speedUnknownRole: { message: "메시지" },
-  speedTruncated: { message: "미리보기용으로 내용이 일부 줄었습니다." },
-  speedExpandTurn: { message: "펼치기" },
-  speedCollapseTurn: { message: "접기" }
+  speedRerenderBlocked: {
+    message: "작성 중인 프롬프트나 응답이 끝난 뒤 더 보기를 사용할 수 있습니다."
+  }
 };
 
 let activeLanguage = getDefaultLanguage();

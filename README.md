@@ -49,9 +49,9 @@ The goal is a calmer cleanup flow:
 - Configurable initial render count and load-more batch size when Speed mode is enabled.
 - MAIN-world `fetch` interception at `document_start` for ChatGPT conversation detail API responses.
 - Keeps only the latest 10 messages in ChatGPT's native render path by default.
-- Keeps the original response in page memory only, so `Load 2 more` can reveal older messages in lightweight extension-rendered cards without another API call.
-- Keeps long cached-message cards collapsed by default so large prompts do not break the conversation layout.
-- `View all` renders all cached older messages into the existing page without a reload.
+- Keeps the original response in page memory only, so `Load 5 more` can ask ChatGPT's own React UI to render more cached messages without another API call.
+- `View all` re-renders the full cached conversation in the existing page without a hard reload.
+- Blocks soft re-render actions while a prompt draft exists or a response is actively generating.
 - Page-memory cache is cleared by refresh, tab close, or navigation away from the current page context.
 
 ## Safety Model
@@ -117,7 +117,7 @@ docs/ux-mockup.png         UX direction mockup
 
 ## Privacy
 
-This extension runs locally in the browser. It does not send conversation data to third-party servers. Selected conversation IDs are used only against ChatGPT's own same-origin web API or ChatGPT's visible UI controls. Speed mode keeps the current conversation response only in the page's JavaScript memory so older messages can be revealed without another request; a refresh clears it. See [PRIVACY.md](PRIVACY.md).
+This extension runs locally in the browser. It does not send conversation data to third-party servers. Selected conversation IDs are used only against ChatGPT's own same-origin web API or ChatGPT's visible UI controls. Speed mode keeps the current conversation response only in the page's JavaScript memory so more messages can be rendered from cache without another request; a refresh clears it. See [PRIVACY.md](PRIVACY.md).
 
 ## License
 

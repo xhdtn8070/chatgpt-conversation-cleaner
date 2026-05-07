@@ -7,7 +7,7 @@ declare global {
   }
 }
 
-test("speed mode trims ChatGPT conversation fetch and reveals cached older messages", async ({
+test("speed mode trims ChatGPT conversation fetch and expands native rendering from cache", async ({
   page
 }) => {
   const conversation = buildConversation(30);
@@ -17,6 +17,8 @@ test("speed mode trims ChatGPT conversation fetch and reveals cached older messa
     const storage: Record<string, unknown> = {
       "gptbd.bulkMode": false,
       "gptbd.speedMode": true,
+      "gptbd.speedVisibleMessages": 10,
+      "gptbd.speedBatchMessages": 5,
       "gptbd.sidebarControls": true
     };
 
@@ -66,25 +68,29 @@ test("speed mode trims ChatGPT conversation fetch and reveals cached older messa
   await page.waitForSelector("html[data-gptbd-ready='true']");
 
   await expect(page.getByText("20 hidden · 10 shown · initial 10")).toBeVisible();
-  await page.getByRole("button", { name: "Load 2 more" }).click();
-  await expect(page.locator(".gptbd-speed-turn")).toHaveCount(2);
-  await expect(page.getByText("18 hidden · 12 shown · initial 10")).toBeVisible();
-  await expect(page.locator(".gptbd-speed-body").first()).toHaveCSS("overflow", "hidden");
-  await expect(page.getByRole("button", { name: "Show more" })).toBeVisible();
-  await page.getByRole("button", { name: "Show more" }).click();
-  await expect(page.getByRole("button", { name: "Collapse" })).toBeVisible();
+
+  await page.locator("#prompt-textarea").fill("draft");
+  await page.getByRole("button", { name: "Load 5 more" }).click();
+  await expect(page.getByText("Finish the active draft or response before loading more.")).toBeVisible();
+  await expect(page.locator("section[data-testid^='conversation-turn-']")).toHaveCount(10);
   await expect.poll(() => apiCalls).toBe(1);
 
-  await page.getByRole("button", { name: "Load 2 more" }).click();
-  await expect(page.locator(".gptbd-speed-turn")).toHaveCount(4);
-  await expect(page.getByText("16 hidden · 14 shown · initial 10")).toBeVisible();
+  await page.locator("#prompt-textarea").fill("");
+  await page.getByRole("button", { name: "Load 5 more" }).click();
+  await expect(page.locator("section[data-testid^='conversation-turn-']")).toHaveCount(15);
+  await expect(page.locator(".gptbd-speed-turn")).toHaveCount(0);
+  await expect(page.getByText("15 hidden · 15 shown · initial 10")).toBeVisible();
+  await expect.poll(() => apiCalls).toBe(1);
+
+  await page.getByRole("button", { name: "Load 5 more" }).click();
+  await expect(page.locator("section[data-testid^='conversation-turn-']")).toHaveCount(20);
+  await expect(page.getByText("10 hidden · 20 shown · initial 10")).toBeVisible();
   await expect.poll(() => apiCalls).toBe(1);
 
   await page.getByRole("button", { name: "View all" }).click();
-  await expect(page.locator(".gptbd-speed-turn")).toHaveCount(20);
+  await expect(page.locator("section[data-testid^='conversation-turn-']")).toHaveCount(30);
   await expect(page.getByText("0 hidden · 30 shown · initial 10")).toBeVisible();
   await expect(page.getByRole("button", { name: "All shown" })).toBeDisabled();
-  await expect(page.locator("section[data-testid^='conversation-turn-']")).toHaveCount(10);
   await expect.poll(() => apiCalls).toBe(1);
 });
 
@@ -98,7 +104,7 @@ function conversationHtml(): string {
       localStorage.setItem("gptbd.speedBridge.v2", JSON.stringify({
         enabled: true,
         visibleMessages: 10,
-        batchMessages: 2
+        batchMessages: 5
       }));
       window.__speedApiCalls = window.__speedApiCalls || 0;
       const originalFetch = window.fetch.bind(window);
@@ -114,6 +120,9 @@ function conversationHtml(): string {
   <body>
     <main>
       <div id="thread"></div>
+      <form>
+        <textarea id="prompt-textarea" aria-label="Message"></textarea>
+      </form>
     </main>
     <script>
       function visibleNodes(data) {
@@ -147,6 +156,11 @@ function conversationHtml(): string {
       }
 
       render();
+      window.addEventListener("popstate", () => {
+        if (location.pathname === "/c/speed-alpha") {
+          render();
+        }
+      });
     </script>
   </body>
 </html>`;

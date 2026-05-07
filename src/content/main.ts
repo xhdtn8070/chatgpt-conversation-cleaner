@@ -33,7 +33,7 @@ const FIRST_RUN_DEFAULTS = {
   sidebarControls: true,
   speedMode: false,
   speedVisibleMessages: 10,
-  speedBatchMessages: 2
+  speedBatchMessages: 5
 } as const;
 const MESSAGE_TYPES = {
   getState: "GPTBD_GET_STATE",

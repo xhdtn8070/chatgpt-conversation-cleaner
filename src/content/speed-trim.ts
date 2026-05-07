@@ -1,14 +1,3 @@
-export type SpeedRole = "user" | "assistant" | "tool" | "system" | "unknown";
-
-export type SpeedTurn = {
-  id: string;
-  nodeId: string;
-  role: SpeedRole;
-  text: string;
-  createTime?: number;
-  truncated: boolean;
-};
-
 export type ConversationTrimStats = {
   totalVisible: number;
   keptVisible: number;
@@ -21,12 +10,10 @@ export type ConversationTrimStats = {
 export type ConversationTrimResult = {
   data: Record<string, unknown>;
   trimmed: boolean;
-  turns: SpeedTurn[];
   stats: ConversationTrimStats;
 };
 
 const CONVERSATION_API_ID = /\/backend-api\/conversation\/([^/?#]+)/;
-const DISPLAY_TEXT_LIMIT = 4000;
 const VISIBLE_ROLES = new Set(["user", "assistant", "tool"]);
 
 type JsonRecord = Record<string, unknown>;
@@ -80,13 +67,11 @@ export function trimChatGptConversation(
   const nativeStartIndex = Math.max(0, totalVisible - normalizedLimit);
   const keptVisible = Math.min(totalVisible, normalizedLimit);
   const hiddenVisible = Math.max(0, totalVisible - keptVisible);
-  const turns = visibleEntries.map(({ nodeId, node }) => extractTurn(nodeId, node));
 
   if (hiddenVisible === 0) {
     return {
       data: input,
       trimmed: false,
-      turns,
       stats: {
         totalVisible,
         keptVisible: totalVisible,
@@ -133,7 +118,6 @@ export function trimChatGptConversation(
       current_node: currentNodeId
     },
     trimmed: true,
-    turns,
     stats: {
       totalVisible,
       keptVisible,
@@ -143,13 +127,6 @@ export function trimChatGptConversation(
       nodeCount: Object.keys(mapping).length
     }
   };
-}
-
-export function getOlderTurns(turns: SpeedTurn[], nativeStartIndex: number, olderCount: number): SpeedTurn[] {
-  const count = Math.max(0, Math.floor(olderCount));
-  const end = Math.max(0, Math.min(nativeStartIndex, turns.length));
-  const start = Math.max(0, end - count);
-  return turns.slice(start, end);
 }
 
 function buildActiveChain(mapping: Record<string, MappingNode>, currentNodeId: string): string[] {
@@ -174,70 +151,8 @@ function isVisibleConversationNode(node: MappingNode): boolean {
   return Boolean(message && VISIBLE_ROLES.has(role));
 }
 
-function extractTurn(nodeId: string, node: MappingNode): SpeedTurn {
-  const message = isRecord(node.message) ? node.message : {};
-  const messageId = typeof message.id === "string" ? message.id : nodeId;
-  const role = normalizeRole(getNestedString(message, ["author", "role"]));
-  const rawText = normalizeWhitespace(extractMessageText(message));
-  const truncated = rawText.length > DISPLAY_TEXT_LIMIT;
-  const createTime = typeof message.create_time === "number" ? message.create_time : undefined;
-
-  return {
-    id: messageId,
-    nodeId,
-    role,
-    text: truncated ? `${rawText.slice(0, DISPLAY_TEXT_LIMIT).trim()}...` : rawText,
-    createTime,
-    truncated
-  };
-}
-
-function extractMessageText(message: JsonRecord): string {
-  const content = isRecord(message.content) ? message.content : null;
-
-  if (!content) {
-    return "";
-  }
-
-  const parts = content.parts;
-
-  if (Array.isArray(parts)) {
-    return parts.map(extractPartText).filter(Boolean).join("\n\n");
-  }
-
-  for (const key of ["text", "result", "summary"]) {
-    const value = content[key];
-
-    if (typeof value === "string") {
-      return value;
-    }
-  }
-
-  return "";
-}
-
-function extractPartText(part: unknown): string {
-  if (typeof part === "string") {
-    return part;
-  }
-
-  if (!isRecord(part)) {
-    return "";
-  }
-
-  for (const key of ["text", "content", "caption"]) {
-    const value = part[key];
-
-    if (typeof value === "string") {
-      return value;
-    }
-  }
-
-  return "";
-}
-
-function normalizeRole(role: unknown): SpeedRole {
-  if (role === "user" || role === "assistant" || role === "tool" || role === "system") {
+function normalizeRole(role: unknown): string {
+  if (typeof role === "string") {
     return role;
   }
 
@@ -256,10 +171,6 @@ function getNestedString(input: unknown, path: string[]): string | undefined {
   }
 
   return typeof value === "string" ? value : undefined;
-}
-
-function normalizeWhitespace(value: string): string {
-  return value.replace(/\r\n/g, "\n").replace(/[ \t]+\n/g, "\n").trim();
 }
 
 function isRecord(value: unknown): value is JsonRecord {

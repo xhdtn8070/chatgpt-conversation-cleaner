@@ -1,9 +1,9 @@
-import { t, type LanguageCode, type MessageKey } from "./i18n";
+import { t, type LanguageCode } from "./i18n";
 
 export const SPEED_BRIDGE_KEY = "gptbd.speedBridge.v2";
 export const SPEED_DEFAULTS = {
   visibleMessages: 10,
-  batchMessages: 2
+  batchMessages: 5
 } as const;
 export type SpeedSettings = {
   visibleMessages: number;
@@ -15,6 +15,19 @@ const PAGE_SOURCE = "gptbd-main";
 const REQUEST_TIMEOUT_MS = 1200;
 const CONVERSATION_PATH = /\/c\/([^/?#]+)/;
 const MESSAGE_SELECTOR = 'main section[data-testid^="conversation-turn-"]';
+const COMPOSER_SELECTOR = [
+  "#prompt-textarea",
+  "[data-testid='prompt-textarea']",
+  "form textarea",
+  "form [contenteditable='true']"
+].join(",");
+const GENERATING_SELECTOR = [
+  "[data-testid='stop-button']",
+  "button[aria-label*='Stop' i]",
+  "button[aria-label*='중지']",
+  "main [aria-busy='true']",
+  "main [data-is-streaming='true']"
+].join(",");
 
 type SpeedStatus = {
   cacheReady: boolean;
@@ -25,16 +38,9 @@ type SpeedStatus = {
   hiddenVisible?: number;
   nativeStartIndex?: number;
   visibleMessages: number;
+  targetVisibleMessages?: number;
   batchMessages: number;
   trimmed?: boolean;
-};
-
-type SpeedTurn = {
-  id: string;
-  nodeId: string;
-  role: "user" | "assistant" | "tool" | "system" | "unknown";
-  text: string;
-  truncated: boolean;
 };
 
 type SpeedResponse = {
@@ -53,15 +59,15 @@ export class SpeedControls {
   private enabled = false;
   private language: LanguageCode = "en";
   private settings: SpeedSettings = { ...SPEED_DEFAULTS };
-  private renderedOlderCount = 0;
   private currentConversationId: string | null = null;
   private root: HTMLElement | null = null;
-  private olderList: HTMLElement | null = null;
   private mutationObserver: MutationObserver | null = null;
   private pending = new Map<string, PendingRequest>();
   private refreshQueued = false;
   private lastUrl = window.location.href;
   private urlPoll: number | null = null;
+  private noticeText: string | null = null;
+  private noticeTimeout: number | null = null;
 
   init(enabled: boolean, language: LanguageCode, settings: SpeedSettings): void {
     this.enabled = enabled;
@@ -79,7 +85,6 @@ export class SpeedControls {
     }
 
     this.enabled = enabled;
-    this.renderedOlderCount = 0;
     this.writeBridge();
 
     if (!isConversationPage()) {
@@ -90,19 +95,16 @@ export class SpeedControls {
     const status = await this.requestStatus().catch(() => null);
 
     if (enabled) {
-      if (!status?.trimmed) {
-        window.location.reload();
-      } else {
-        this.scheduleRefresh();
-      }
+      await this.softRerenderConversation();
+      this.scheduleRefresh();
       return;
     }
 
     this.cleanup();
 
-    if (status?.trimmed) {
-      await this.requestPage("GPTBD_SPEED_BYPASS_FULL", {});
-      window.location.reload();
+    if (status?.cacheReady && canSoftRerenderConversation()) {
+      await this.setNativeVisibleCount(status.totalVisible ?? status.nativeVisible ?? this.settings.visibleMessages);
+      await this.softRerenderConversation();
     }
   }
 
@@ -177,7 +179,6 @@ export class SpeedControls {
 
     this.lastUrl = window.location.href;
     this.currentConversationId = null;
-    this.renderedOlderCount = 0;
     this.cleanup();
     this.scheduleRefresh();
   }
@@ -202,14 +203,17 @@ export class SpeedControls {
 
     const status = await this.requestStatus().catch(() => null);
 
-    if (!status?.cacheReady || !status.trimmed || !status.conversationId) {
+    if (
+      !status?.cacheReady ||
+      !status.conversationId ||
+      (status.totalVisible ?? 0) <= status.visibleMessages
+    ) {
       this.cleanup();
       return;
     }
 
     if (this.currentConversationId !== status.conversationId) {
       this.currentConversationId = status.conversationId;
-      this.renderedOlderCount = 0;
     }
 
     await this.render(status);
@@ -224,9 +228,14 @@ export class SpeedControls {
       return;
     }
 
-    const hiddenTotal = Math.max(0, status.hiddenVisible ?? 0);
-    this.renderedOlderCount = Math.min(this.renderedOlderCount, hiddenTotal);
-    const hiddenRemaining = Math.max(0, hiddenTotal - this.renderedOlderCount);
+    const nativeMessageCount = countNativeMessages();
+    const totalVisible = Math.max(status.totalVisible ?? 0, nativeMessageCount);
+    const statusVisible = status.targetVisibleMessages ?? status.nativeVisible ?? this.settings.visibleMessages;
+    const nativeVisible = Math.min(
+      totalVisible,
+      nativeMessageCount > 0 ? nativeMessageCount : statusVisible
+    );
+    const hiddenRemaining = Math.max(0, totalVisible - nativeVisible);
     const batchSize = Math.min(status.batchMessages, hiddenRemaining);
 
     if (!this.root) {
@@ -243,15 +252,18 @@ export class SpeedControls {
     const viewAll = this.root.querySelector<HTMLButtonElement>(".gptbd-speed-view-all");
 
     if (summary) {
-      summary.textContent = t("speedHiddenSummary", {
-        hidden: hiddenRemaining,
-        visible: (status.nativeVisible ?? 0) + this.renderedOlderCount,
-        initial: status.visibleMessages
-      });
+      summary.textContent =
+        this.noticeText ??
+        t("speedHiddenSummary", {
+          hidden: hiddenRemaining,
+          visible: nativeVisible,
+          initial: status.visibleMessages
+        });
     }
 
     if (toolbar) {
       toolbar.setAttribute("lang", this.language);
+      toolbar.toggleAttribute("data-notice", Boolean(this.noticeText));
     }
 
     if (loadMore) {
@@ -264,9 +276,6 @@ export class SpeedControls {
       viewAll.textContent = t("speedViewAll");
       viewAll.disabled = hiddenRemaining === 0;
     }
-
-    const older = await this.requestOlder(this.renderedOlderCount).catch(() => []);
-    this.renderOlderTurns(older);
   }
 
   private createRoot(): HTMLElement {
@@ -296,12 +305,9 @@ export class SpeedControls {
       void this.handleViewAll();
     });
 
-    this.olderList = document.createElement("div");
-    this.olderList.className = "gptbd-speed-older-list";
-
     actions.append(loadMore, viewAll);
     toolbar.append(summary, actions);
-    root.append(toolbar, this.olderList);
+    root.append(toolbar);
     return root;
   }
 
@@ -312,12 +318,22 @@ export class SpeedControls {
       return;
     }
 
-    const hiddenTotal = Math.max(0, status.hiddenVisible ?? 0);
-    this.renderedOlderCount = Math.min(
-      hiddenTotal,
-      this.renderedOlderCount + status.batchMessages
-    );
-    await this.render(status);
+    const totalVisible = status.totalVisible ?? countNativeMessages();
+    const currentVisible = Math.max(countNativeMessages(), status.nativeVisible ?? 0);
+    const nextVisible = Math.min(totalVisible, currentVisible + status.batchMessages);
+
+    if (nextVisible <= currentVisible) {
+      return;
+    }
+
+    if (!canSoftRerenderConversation()) {
+      this.showNotice(t("speedRerenderBlocked"));
+      return;
+    }
+
+    await this.setNativeVisibleCount(nextVisible);
+    await this.softRerenderConversation();
+    this.scheduleRefresh();
   }
 
   private async handleViewAll(): Promise<void> {
@@ -327,62 +343,34 @@ export class SpeedControls {
       return;
     }
 
-    this.renderedOlderCount = Math.max(0, status.hiddenVisible ?? 0);
-    await this.render(status);
-  }
-
-  private renderOlderTurns(turns: SpeedTurn[]): void {
-    if (!this.olderList) {
+    if (!canSoftRerenderConversation()) {
+      this.showNotice(t("speedRerenderBlocked"));
       return;
     }
 
-    this.olderList.replaceChildren(...turns.map((turn) => this.createTurnPreview(turn)));
-  }
-
-  private createTurnPreview(turn: SpeedTurn): HTMLElement {
-    const article = document.createElement("article");
-    article.className = "gptbd-speed-turn";
-    article.dataset.expanded = "false";
-
-    const role = document.createElement("span");
-    role.className = "gptbd-speed-role";
-    role.textContent = t(roleMessageKey(turn.role));
-
-    const body = document.createElement("p");
-    body.className = "gptbd-speed-body";
-    body.textContent = turn.text || t("speedUnknownRole");
-
-    article.append(role, body);
-
-    if (shouldCollapseTurn(turn)) {
-      const expand = document.createElement("button");
-      expand.type = "button";
-      expand.className = "gptbd-speed-expand";
-      expand.textContent = t("speedExpandTurn");
-      expand.addEventListener("click", () => {
-        const expanded = article.dataset.expanded === "true";
-        article.dataset.expanded = String(!expanded);
-        expand.textContent = t(expanded ? "speedExpandTurn" : "speedCollapseTurn");
-      });
-      article.append(expand);
-    } else {
-      article.dataset.expanded = "true";
-    }
-
-    if (turn.truncated) {
-      const truncated = document.createElement("span");
-      truncated.className = "gptbd-speed-truncated";
-      truncated.textContent = t("speedTruncated");
-      article.append(truncated);
-    }
-
-    return article;
+    await this.setNativeVisibleCount(status.totalVisible ?? status.nativeVisible ?? countNativeMessages());
+    await this.softRerenderConversation();
+    this.scheduleRefresh();
   }
 
   private cleanup(): void {
     this.root?.remove();
     this.root = null;
-    this.olderList = null;
+  }
+
+  private showNotice(message: string): void {
+    this.noticeText = message;
+
+    if (this.noticeTimeout) {
+      window.clearTimeout(this.noticeTimeout);
+    }
+
+    this.noticeTimeout = window.setTimeout(() => {
+      this.noticeText = null;
+      this.noticeTimeout = null;
+      this.scheduleRefresh();
+    }, 3600);
+    this.scheduleRefresh();
   }
 
   private isOwnMutation(mutation: MutationRecord): boolean {
@@ -405,13 +393,37 @@ export class SpeedControls {
     return payload as SpeedStatus;
   }
 
-  private async requestOlder(olderCount: number): Promise<SpeedTurn[]> {
-    const payload = await this.requestPage("GPTBD_SPEED_GET_OLDER", {
+  private async setNativeVisibleCount(visibleMessages: number): Promise<SpeedStatus> {
+    const payload = await this.requestPage("GPTBD_SPEED_SET_VISIBLE_COUNT", {
       conversationId: getConversationIdFromLocation(),
-      olderCount
+      visibleMessages
     });
-    const turns = (payload as { turns?: unknown }).turns;
-    return Array.isArray(turns) ? (turns as SpeedTurn[]) : [];
+    return payload as SpeedStatus;
+  }
+
+  private async softRerenderConversation(): Promise<boolean> {
+    const conversationPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+    if (!isConversationPage()) {
+      return false;
+    }
+
+    if (!canSoftRerenderConversation()) {
+      this.showNotice(t("speedRerenderBlocked"));
+      return false;
+    }
+
+    try {
+      history.replaceState(history.state, "", `/?gptbd-speed-rerender=${Date.now()}`);
+      window.dispatchEvent(new PopStateEvent("popstate", { state: history.state }));
+      await delay(80);
+    } finally {
+      history.replaceState(history.state, "", conversationPath);
+      window.dispatchEvent(new PopStateEvent("popstate", { state: history.state }));
+      await delay(180);
+    }
+
+    return true;
   }
 
   private requestPage(type: string, payload: Record<string, unknown>): Promise<unknown> {
@@ -468,22 +480,40 @@ function isConversationPage(): boolean {
   return Boolean(getConversationIdFromLocation());
 }
 
-function roleMessageKey(role: SpeedTurn["role"]): MessageKey {
-  if (role === "user") {
-    return "speedUserRole";
-  }
-
-  if (role === "assistant") {
-    return "speedAssistantRole";
-  }
-
-  if (role === "tool") {
-    return "speedToolRole";
-  }
-
-  return "speedUnknownRole";
+function countNativeMessages(): number {
+  return document.querySelectorAll(MESSAGE_SELECTOR).length;
 }
 
-function shouldCollapseTurn(turn: SpeedTurn): boolean {
-  return turn.truncated || turn.text.length > 900 || turn.text.split("\n").length > 8;
+function canSoftRerenderConversation(): boolean {
+  return !hasComposerDraftOrFocus() && !isGeneratingResponse();
+}
+
+function hasComposerDraftOrFocus(): boolean {
+  const activeElement = document.activeElement;
+
+  return Array.from(document.querySelectorAll<HTMLElement>(COMPOSER_SELECTOR)).some((element) => {
+    if (!isVisibleElement(element)) {
+      return false;
+    }
+
+    const text =
+      element instanceof HTMLTextAreaElement || element instanceof HTMLInputElement
+        ? element.value
+        : element.innerText || element.textContent || "";
+
+    return text.trim().length > 0 || (activeElement instanceof Node && element.contains(activeElement));
+  });
+}
+
+function isGeneratingResponse(): boolean {
+  return Array.from(document.querySelectorAll<HTMLElement>(GENERATING_SELECTOR)).some(isVisibleElement);
+}
+
+function isVisibleElement(element: HTMLElement): boolean {
+  const rect = element.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0 && getComputedStyle(element).visibility !== "hidden";
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }

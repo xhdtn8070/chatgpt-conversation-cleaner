@@ -359,6 +359,10 @@ html.gptbd-bulk-active [data-gptbd-force-menu="true"] button[aria-label*="option
   background: color-mix(in srgb, Canvas 94%, transparent) !important;
 }
 
+.gptbd-speed-toolbar[data-notice] {
+  border-color: color-mix(in srgb, #d97706 36%, transparent) !important;
+}
+
 .gptbd-speed-summary {
   min-width: 0 !important;
   overflow: hidden !important;
@@ -368,6 +372,10 @@ html.gptbd-bulk-active [data-gptbd-force-menu="true"] button[aria-label*="option
   line-height: 1.25 !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
+}
+
+.gptbd-speed-toolbar[data-notice] .gptbd-speed-summary {
+  color: color-mix(in srgb, #d97706 82%, CanvasText) !important;
 }
 
 .gptbd-speed-actions {
@@ -396,68 +404,6 @@ html.gptbd-bulk-active [data-gptbd-force-menu="true"] button[aria-label*="option
 .gptbd-speed-actions button:disabled {
   cursor: not-allowed !important;
   opacity: 0.55 !important;
-}
-
-.gptbd-speed-older-list {
-  display: grid !important;
-  gap: 8px !important;
-}
-
-.gptbd-speed-turn {
-  display: grid !important;
-  gap: 6px !important;
-  min-width: 0 !important;
-  max-width: 100% !important;
-  padding: 10px 12px !important;
-  border: 1px solid color-mix(in srgb, CanvasText 10%, transparent) !important;
-  border-radius: 8px !important;
-  background: color-mix(in srgb, CanvasText 4%, Canvas) !important;
-  box-sizing: border-box !important;
-  contain: content !important;
-}
-
-.gptbd-speed-role {
-  color: color-mix(in srgb, CanvasText 62%, transparent) !important;
-  font-size: 11px !important;
-  font-weight: 800 !important;
-  line-height: 1.2 !important;
-}
-
-.gptbd-speed-body {
-  margin: 0 !important;
-  color: CanvasText !important;
-  font-size: 13px !important;
-  line-height: 1.5 !important;
-  max-height: 11.75em !important;
-  overflow: hidden !important;
-  overflow-wrap: anywhere !important;
-  white-space: pre-wrap !important;
-}
-
-.gptbd-speed-turn[data-expanded="true"] .gptbd-speed-body {
-  max-height: none !important;
-}
-
-.gptbd-speed-expand {
-  justify-self: start !important;
-  min-height: 28px !important;
-  padding: 0 9px !important;
-  border: 1px solid color-mix(in srgb, CanvasText 12%, transparent) !important;
-  border-radius: 7px !important;
-  background: color-mix(in srgb, CanvasText 5%, Canvas) !important;
-  color: CanvasText !important;
-  cursor: pointer !important;
-  font: 700 12px/1 ui-sans-serif, system-ui, sans-serif !important;
-}
-
-.gptbd-speed-expand:hover {
-  background: color-mix(in srgb, CanvasText 9%, Canvas) !important;
-}
-
-.gptbd-speed-truncated {
-  color: color-mix(in srgb, CanvasText 58%, transparent) !important;
-  font-size: 11px !important;
-  line-height: 1.3 !important;
 }
 
 @media (max-width: 640px) {

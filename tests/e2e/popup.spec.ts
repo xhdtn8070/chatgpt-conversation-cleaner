@@ -15,7 +15,7 @@ test("popup switches between Korean and English UI", async ({ page }) => {
       "gptbd.sidebarControls": true,
       "gptbd.speedMode": false,
       "gptbd.speedVisibleMessages": 10,
-      "gptbd.speedBatchMessages": 2
+      "gptbd.speedBatchMessages": 5
     };
 
     window.__popupStorage = storage;
@@ -73,7 +73,7 @@ test("popup switches between Korean and English UI", async ({ page }) => {
             sidebarControls: storage["gptbd.sidebarControls"] ?? true,
             speedMode: storage["gptbd.speedMode"] ?? false,
             speedVisibleMessages: storage["gptbd.speedVisibleMessages"] ?? 10,
-            speedBatchMessages: storage["gptbd.speedBatchMessages"] ?? 2
+            speedBatchMessages: storage["gptbd.speedBatchMessages"] ?? 5
           };
         }
       }
@@ -112,7 +112,7 @@ test("popup switches between Korean and English UI", async ({ page }) => {
     "aria-checked",
     "true"
   );
-  await expect(page.getByText("Initial 10 · Load 2 each")).toBeVisible();
+  await expect(page.getByText("Initial 10 · Load 5 each")).toBeVisible();
   await expect(page.getByRole("region", { name: "Speed mode settings" })).toBeVisible();
   await page.getByLabel("Initial messages").fill("12");
   await page.getByLabel("Load more size").fill("3");

@@ -1,7 +1,4 @@
-import {
-  getOlderTurns,
-  trimChatGptConversation
-} from "../src/content/speed-trim";
+import { trimChatGptConversation } from "../src/content/speed-trim";
 
 describe("ChatGPT speed trim utility", () => {
   it("trims the active mapping chain and reconnects kept nodes", () => {
@@ -27,17 +24,6 @@ describe("ChatGPT speed trim utility", () => {
     expect(mapping["msg-11"].parent).toBe("root");
     expect(mapping.root.children).toEqual(["msg-11"]);
     expect(mapping["msg-30"].children).toEqual([]);
-  });
-
-  it("returns older turns immediately before the native trimmed range", () => {
-    const result = trimChatGptConversation(buildConversation(30), 20);
-
-    expect(result).not.toBeNull();
-
-    const older = getOlderTurns(result!.turns, result!.stats.nativeStartIndex, 2);
-
-    expect(older.map((turn) => turn.nodeId)).toEqual(["msg-9", "msg-10"]);
-    expect(older.map((turn) => turn.text)).toEqual(["Message 9", "Message 10"]);
   });
 });
 

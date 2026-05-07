@@ -1,9 +1,7 @@
 import {
   getConversationIdFromApiUrl,
-  getOlderTurns,
   trimChatGptConversation,
-  type ConversationTrimResult,
-  type SpeedTurn
+  type ConversationTrimResult
 } from "./speed-trim";
 
 const PAGE_SOURCE = "gptbd-main";
@@ -15,7 +13,7 @@ const CONVERSATION_ATTR = "data-gptbd-speed-conversation-id";
 const DEFAULT_SETTINGS: SpeedSettings = {
   enabled: false,
   visibleMessages: 10,
-  batchMessages: 2
+  batchMessages: 5
 };
 
 type SpeedSettings = {
@@ -28,7 +26,6 @@ type CacheEntry = {
   conversationId: string;
   url: string;
   original: Record<string, unknown>;
-  turns: SpeedTurn[];
   stats: ConversationTrimResult["stats"];
   responseMeta: {
     status: number;
@@ -44,7 +41,7 @@ type ContentRequest = {
   requestId?: string;
   settings?: Partial<SpeedSettings>;
   conversationId?: string;
-  olderCount?: number;
+  visibleMessages?: number;
 };
 
 declare global {
@@ -54,6 +51,7 @@ declare global {
 }
 
 const cache = new Map<string, CacheEntry>();
+const visibleOverrides = new Map<string, number>();
 let settings = readSettings();
 
 if (!window.__gptbdSpeedPatched) {
@@ -70,6 +68,7 @@ function patchFetch(): void {
 
     if (request.conversationId && request.method !== "GET") {
       cache.delete(request.conversationId);
+      visibleOverrides.delete(request.conversationId);
       clearTrimmedAttributes(request.conversationId);
       return originalFetch(input, init);
     }
@@ -92,18 +91,24 @@ function patchFetch(): void {
     }
 
     const cached = cache.get(request.conversationId);
+    const visibleLimit = getVisibleLimit(request.conversationId);
 
     if (cached) {
-      const trimmed = trimChatGptConversation(cached.original, settings.visibleMessages);
+      const trimmed = trimChatGptConversation(cached.original, visibleLimit);
 
-      if (trimmed?.trimmed) {
+      if (trimmed) {
         cache.set(request.conversationId, {
           ...cached,
-          turns: trimmed.turns,
           stats: trimmed.stats
         });
-        setTrimmedAttributes(request.conversationId);
-        return buildResponse(cached.responseMeta, JSON.stringify(trimmed.data));
+
+        if (trimmed.trimmed) {
+          setTrimmedAttributes(request.conversationId);
+          return buildResponse(cached.responseMeta, JSON.stringify(trimmed.data));
+        }
+
+        clearTrimmedAttributes(request.conversationId);
+        return buildResponse(cached.responseMeta, JSON.stringify(cached.original));
       }
     }
 
@@ -116,7 +121,7 @@ function patchFetch(): void {
     try {
       const text = stripBom(await response.clone().text());
       const data = JSON.parse(text) as Record<string, unknown>;
-      const trimmed = trimChatGptConversation(data, settings.visibleMessages);
+      const trimmed = trimChatGptConversation(data, visibleLimit);
 
       if (!trimmed) {
         return response;
@@ -126,7 +131,6 @@ function patchFetch(): void {
         conversationId: request.conversationId,
         url: request.url,
         original: data,
-        turns: trimmed.turns,
         stats: trimmed.stats,
         responseMeta: {
           status: response.status,
@@ -166,7 +170,13 @@ function bindMessages(): void {
     const request = event.data;
 
     if (request.type === "GPTBD_SPEED_SETTINGS") {
-      settings = normalizeSettings(request.settings);
+      const nextSettings = normalizeSettings(request.settings);
+
+      if (nextSettings.visibleMessages !== settings.visibleMessages) {
+        visibleOverrides.clear();
+      }
+
+      settings = nextSettings;
       writeSettings(settings);
       return;
     }
@@ -180,8 +190,11 @@ function bindMessages(): void {
       return;
     }
 
-    if (request.type === "GPTBD_SPEED_GET_OLDER") {
-      respond(request.requestId, getOlder(request.conversationId, request.olderCount));
+    if (request.type === "GPTBD_SPEED_SET_VISIBLE_COUNT") {
+      respond(
+        request.requestId,
+        setVisibleCount(request.conversationId, request.visibleMessages)
+      );
       return;
     }
 
@@ -208,6 +221,13 @@ function getStatus(conversationId: string | undefined): Record<string, unknown> 
     };
   }
 
+  const visibleLimit = getVisibleLimit(entry.conversationId);
+  const trimmed = trimChatGptConversation(entry.original, visibleLimit);
+
+  if (trimmed) {
+    entry.stats = trimmed.stats;
+  }
+
   return {
     cacheReady: true,
     enabled: settings.enabled,
@@ -217,25 +237,26 @@ function getStatus(conversationId: string | undefined): Record<string, unknown> 
     hiddenVisible: entry.stats.hiddenVisible,
     nativeStartIndex: entry.stats.nativeStartIndex,
     visibleMessages: settings.visibleMessages,
+    targetVisibleMessages: visibleLimit,
     batchMessages: settings.batchMessages,
     trimmed: entry.stats.hiddenVisible > 0
   };
 }
 
-function getOlder(
+function setVisibleCount(
   conversationId: string | undefined,
-  olderCount: number | undefined
+  visibleMessages: number | undefined
 ): Record<string, unknown> {
   const entry = conversationId ? cache.get(conversationId) : null;
 
   if (!entry) {
-    return { cacheReady: false, turns: [] };
+    return { cacheReady: false };
   }
 
-  return {
-    cacheReady: true,
-    turns: getOlderTurns(entry.turns, entry.stats.nativeStartIndex, olderCount ?? 0)
-  };
+  const total = entry.stats.totalVisible;
+  const nextVisible = clampNumber(visibleMessages, settings.visibleMessages, 1, total);
+  visibleOverrides.set(entry.conversationId, nextVisible);
+  return getStatus(entry.conversationId);
 }
 
 function respond(requestId: string, payload: Record<string, unknown>): void {
@@ -314,6 +335,10 @@ function consumeBypassFlag(): boolean {
   } catch {
     return false;
   }
+}
+
+function getVisibleLimit(conversationId: string): number {
+  return visibleOverrides.get(conversationId) ?? settings.visibleMessages;
 }
 
 function readSettings(): SpeedSettings {

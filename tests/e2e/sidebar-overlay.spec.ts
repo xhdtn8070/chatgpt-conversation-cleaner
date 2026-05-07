@@ -48,7 +48,7 @@ test("content script uses first-run defaults from browser language", async ({ pa
   await expect.poll(() => page.evaluate(() => window.__gptbdController?.getState().sidebarControls)).toBe(true);
   await expect.poll(() => page.evaluate(() => window.__gptbdController?.getState().speedMode)).toBe(false);
   await expect.poll(() => page.evaluate(() => window.__gptbdController?.getState().speedVisibleMessages)).toBe(10);
-  await expect.poll(() => page.evaluate(() => window.__gptbdController?.getState().speedBatchMessages)).toBe(2);
+  await expect.poll(() => page.evaluate(() => window.__gptbdController?.getState().speedBatchMessages)).toBe(5);
   await expect(page.getByText("일괄 정리 꺼짐", { exact: true })).toBeVisible();
   await expect(page.getByRole("checkbox", { name: /alpha planning thread/i })).toHaveCount(0);
 });

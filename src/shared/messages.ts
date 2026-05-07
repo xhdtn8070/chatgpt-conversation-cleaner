@@ -12,7 +12,7 @@ export const FIRST_RUN_DEFAULTS = {
   sidebarControls: true,
   speedMode: false,
   speedVisibleMessages: 10,
-  speedBatchMessages: 2
+  speedBatchMessages: 5
 } as const;
 
 export const MESSAGE_TYPES = {
