@@ -177,13 +177,14 @@ export const SHADOW_CSS = `
 
 .mode-toggle-thumb {
   position: absolute;
-  top: 2px;
+  top: 50%;
   left: 2px;
   width: 16px;
   height: 16px;
   border-radius: 999px;
   background: CanvasText;
   box-shadow: 0 1px 4px color-mix(in srgb, CanvasText 24%, transparent);
+  transform: translateY(-50%);
   transition: transform 140ms ease, background-color 140ms ease;
 }
 
@@ -193,7 +194,7 @@ export const SHADOW_CSS = `
 }
 
 .mode-toggle[aria-checked="true"] .mode-toggle-thumb {
-  transform: translateX(16px);
+  transform: translate(16px, -50%);
   background: Canvas;
 }
 
