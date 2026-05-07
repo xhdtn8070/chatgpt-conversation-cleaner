@@ -8,6 +8,7 @@ A Manifest V3 Chrome extension that adds a stable bulk-selection overlay to the 
 
 - Show a dedicated checkbox lane in the ChatGPT sidebar only when Bulk mode is enabled.
 - Keep checkbox clicks separate from conversation row navigation.
+- In Bulk mode, clicking a conversation row toggles selection instead of navigating.
 - Require an explicit confirmation before destructive actions.
 - Store only local extension settings with `chrome.storage.local`.
 

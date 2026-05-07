@@ -50,4 +50,9 @@ test("content script renders stable checkbox overlay and isolates row clicks", a
   const box = await alphaCheckbox.boundingBox();
   expect(box?.width).toBe(32);
   expect(box?.height).toBe(32);
+
+  await page.getByRole("link", { name: /beta release notes/i }).click();
+  await expect(page.locator("#row-beta")).toHaveAttribute("data-gptbd-row-selected", "true");
+  await expect(page.getByText("2 selected")).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.__navigated)).toBe(false);
 });

@@ -46,6 +46,23 @@ class BulkDeleteController {
   private refreshQueued = false;
   private isDeleting = false;
   private lastDeleteSummary: DeleteSummary | undefined;
+  private handleBulkRowClick = (event: MouseEvent): void => {
+    if (!this.bulkMode || this.isDeleting || event.defaultPrevented) {
+      return;
+    }
+
+    const row = this.findRowFromEvent(event);
+
+    if (!row) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    this.selectedIds = toggleSelection(this.selectedIds, row.id);
+    this.lastDeleteSummary = undefined;
+    this.render();
+  };
 
   constructor() {
     injectDocumentStyle();
@@ -168,6 +185,7 @@ class BulkDeleteController {
   private bindPageListeners(): void {
     window.addEventListener("resize", () => this.scheduleRefresh(), { passive: true });
     window.addEventListener("scroll", () => this.scheduleRefresh(), { capture: true, passive: true });
+    document.addEventListener("click", this.handleBulkRowClick, true);
   }
 
   private scheduleRefresh(): void {
@@ -382,6 +400,28 @@ class BulkDeleteController {
         row.row.removeAttribute("data-gptbd-row-selected");
       }
     }
+  }
+
+  private findRowFromEvent(event: Event): ConversationRow | null {
+    const path = event.composedPath();
+
+    if (path.includes(this.host)) {
+      return null;
+    }
+
+    const target = event.target;
+
+    if (!(target instanceof Element)) {
+      return null;
+    }
+
+    for (const row of this.rows.values()) {
+      if (row.row.contains(target) || row.anchor.contains(target)) {
+        return row;
+      }
+    }
+
+    return null;
   }
 
   private getSidebarRect(): DOMRect {
