@@ -33,6 +33,9 @@ const deleteButton = getElement<HTMLButtonElement>("delete");
 const sidebarPanelLabel = getElement<HTMLElement>("sidebarPanelLabel");
 const sidebarPanelHint = getElement<HTMLElement>("sidebarPanelHint");
 const sidebarPanelToggle = getElement<HTMLButtonElement>("sidebarPanelToggle");
+const speedModeLabel = getElement<HTMLElement>("speedModeLabel");
+const speedModeHint = getElement<HTMLElement>("speedModeHint");
+const speedModeToggle = getElement<HTMLButtonElement>("speedModeToggle");
 const hint = getElement<HTMLElement>("hint");
 
 let currentState: ExtensionState | null = null;
@@ -53,6 +56,13 @@ sidebarPanelToggle.addEventListener("click", () => {
   void sendAndRender({
     type: MESSAGE_TYPES.setSidebarControls,
     enabled: sidebarPanelToggle.getAttribute("aria-checked") !== "true"
+  });
+});
+
+speedModeToggle.addEventListener("click", () => {
+  void sendAndRender({
+    type: MESSAGE_TYPES.setSpeedMode,
+    enabled: speedModeToggle.getAttribute("aria-checked") !== "true"
   });
 });
 
@@ -157,11 +167,13 @@ function renderState(state: ExtensionState): void {
   archiveButton.textContent = t("actionArchive");
   deleteButton.textContent = t("actionDelete");
   sidebarPanelToggle.setAttribute("aria-checked", String(state.sidebarControls));
+  speedModeToggle.setAttribute("aria-checked", String(state.speedMode));
   selectAll.disabled = !enabled || state.visibleCount === 0;
   clear.disabled = !enabled || state.selectedCount === 0;
   archiveButton.disabled = !enabled || state.selectedCount === 0;
   deleteButton.disabled = !enabled || state.selectedCount === 0;
   sidebarPanelToggle.disabled = state.isDeleting;
+  speedModeToggle.disabled = state.isDeleting;
 }
 
 function renderUnavailable(): void {
@@ -176,11 +188,13 @@ function renderUnavailable(): void {
   archiveButton.textContent = t("actionArchive");
   deleteButton.textContent = t("actionDelete");
   sidebarPanelToggle.setAttribute("aria-checked", String(FIRST_RUN_DEFAULTS.sidebarControls));
+  speedModeToggle.setAttribute("aria-checked", String(FIRST_RUN_DEFAULTS.speedMode));
   selectAll.disabled = true;
   clear.disabled = true;
   archiveButton.disabled = true;
   deleteButton.disabled = true;
   sidebarPanelToggle.disabled = true;
+  speedModeToggle.disabled = true;
 }
 
 function setBusy(isBusy: boolean): void {
@@ -192,6 +206,7 @@ function setBusy(isBusy: boolean): void {
   archiveButton.disabled = !canUseActions || (state?.selectedCount ?? 0) === 0;
   deleteButton.disabled = !canUseActions || (state?.selectedCount ?? 0) === 0;
   sidebarPanelToggle.disabled = isBusy || !state;
+  speedModeToggle.disabled = isBusy || !state;
 }
 
 function isAllVisibleSelected(state: ExtensionState | null): boolean {
@@ -222,6 +237,10 @@ function applyStaticCopy(): void {
   sidebarPanelHint.textContent = t("popupSidebarPanelHint");
   sidebarPanelToggle.title = t("popupSidebarPanelAria");
   sidebarPanelToggle.setAttribute("aria-label", t("popupSidebarPanelAria"));
+  speedModeLabel.textContent = t("popupSpeedModeLabel");
+  speedModeHint.textContent = t("popupSpeedModeHint");
+  speedModeToggle.title = t("popupSpeedModeAria");
+  speedModeToggle.setAttribute("aria-label", t("popupSpeedModeAria"));
   hint.textContent = t("popupHintInitial");
 }
 

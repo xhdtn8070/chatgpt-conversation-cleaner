@@ -5,12 +5,12 @@
 <h1 align="center">Conversation Cleaner for ChatGPT</h1>
 
 <p align="center">
-  A Manifest V3 Chrome extension that adds a stable bulk-selection layer to the ChatGPT sidebar.
-  Select conversations, then archive or delete them with confirmation.
+  A Manifest V3 Chrome extension that adds stable bulk cleanup and long-chat speed controls to ChatGPT.
+  Select conversations safely, archive/delete them with confirmation, and open long threads with fewer messages rendered first.
 </p>
 
 <p align="center">
-  <strong>API-first</strong> · <strong>Scoped UI fallback</strong> · <strong>No third-party servers</strong>
+  <strong>API-first cleanup</strong> · <strong>Long-chat trim mode</strong> · <strong>No third-party servers</strong>
 </p>
 
 ![Conversation Cleaner sidebar mockup](docs/ux-mockup.png)
@@ -25,8 +25,11 @@ The goal is a calmer cleanup flow:
 - Select visible conversations with a large, stable click target.
 - Archive or delete selected conversations.
 - Keep pinned conversations protected until the user unpins them.
+- Optionally turn on Speed mode before opening long conversations.
 
 ## Features
+
+### Bulk Cleanup
 
 - Dedicated checkbox lane that does not shift ChatGPT's sidebar layout.
 - Bulk mode row-click interception, so clicking a title selects instead of navigating.
@@ -40,17 +43,28 @@ The goal is a calmer cleanup flow:
 - Popup language toggle for switching the extension UI between English and Korean.
 - Optional sidebar control panel when you prefer controlling everything from the extension popup.
 
+### Long-Chat Speed Mode
+
+- Optional Speed mode toggle in the popup.
+- MAIN-world `fetch` interception at `document_start` for ChatGPT conversation detail API responses.
+- Keeps only the latest 20 messages in ChatGPT's native render path by default.
+- Keeps the original response in page memory only, so `Load 2 more` can reveal older messages in lightweight extension-rendered cards without another API call.
+- `View all` performs a one-shot full reload with trimming disabled.
+- Page-memory cache is cleared by refresh, tab close, or navigation away from the current page context.
+
 ## Safety Model
 
 Conversation Cleaner avoids fixed-position clicking. It resolves the selected conversation row, opens only that row's menu when fallback is needed, then scopes follow-up clicks to the visible ChatGPT menu or confirmation dialog.
 
-First-run defaults are conservative: language follows the browser, Bulk mode starts off, and the optional sidebar control panel starts on.
+First-run defaults are conservative: language follows the browser, Bulk mode starts off, Speed mode starts off, and the optional sidebar control panel starts on.
 
 The action order is:
 
 1. Try ChatGPT's same-origin web API for the selected conversation.
 2. If the API is unavailable, use scoped UI fallback.
 3. If one item fails, stop the batch and keep the remaining items selected.
+
+Speed mode is separate from cleanup actions. It trims only ChatGPT conversation detail fetch responses and does not modify archive/delete requests.
 
 ## Install Locally
 
@@ -82,8 +96,8 @@ Useful scripts:
 
 - `npm run icons`: render PNG icon sizes from `public/icons/icon.svg`.
 - `npm run build`: build the unpacked extension into `dist/`.
-- `npm run test`: run unit tests for parsing, selection, and positioning.
-- `npm run test:browser`: run Playwright coverage against the mock ChatGPT sidebar.
+- `npm run test`: run unit tests for parsing, selection, positioning, and conversation trimming.
+- `npm run test:browser`: run Playwright coverage against the mock ChatGPT sidebar and long-chat fixture.
 
 ## Project Structure
 
@@ -91,7 +105,7 @@ Useful scripts:
 public/manifest.json       Chrome extension manifest
 public/_locales/           English and Korean extension strings
 public/icons/icon.svg      Source icon
-src/content/               ChatGPT sidebar overlay and action logic
+src/content/               Sidebar overlay, action logic, and speed-mode scripts
 src/popup/                 Extension popup UI
 src/shared/                Message contracts
 fixtures/                  Mock ChatGPT pages for browser tests
@@ -101,7 +115,7 @@ docs/ux-mockup.png         UX direction mockup
 
 ## Privacy
 
-This extension runs locally in the browser. It does not send conversation data to third-party servers. Selected conversation IDs are used only against ChatGPT's own same-origin web API or ChatGPT's visible UI controls. See [PRIVACY.md](PRIVACY.md).
+This extension runs locally in the browser. It does not send conversation data to third-party servers. Selected conversation IDs are used only against ChatGPT's own same-origin web API or ChatGPT's visible UI controls. Speed mode keeps the current conversation response only in the page's JavaScript memory so older messages can be revealed without another request; a refresh clears it. See [PRIVACY.md](PRIVACY.md).
 
 ## License
 

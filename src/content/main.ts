@@ -15,6 +15,7 @@ import {
   type MessageKey
 } from "./i18n";
 import { clearSelection, removeSelected, selectAll, toggleSelection } from "./selection";
+import { SpeedControls } from "./speed-controls";
 import { DOCUMENT_CSS, SHADOW_CSS } from "./styles";
 
 const ROOT_ID = "gptbd-root";
@@ -22,17 +23,20 @@ const DOCUMENT_STYLE_ID = "gptbd-document-style";
 const STORAGE_KEYS = {
   bulkMode: "gptbd.bulkMode",
   language: "gptbd.language",
-  sidebarControls: "gptbd.sidebarControls"
+  sidebarControls: "gptbd.sidebarControls",
+  speedMode: "gptbd.speedMode"
 } as const;
 const FIRST_RUN_DEFAULTS = {
   bulkMode: false,
-  sidebarControls: true
+  sidebarControls: true,
+  speedMode: false
 } as const;
 const MESSAGE_TYPES = {
   getState: "GPTBD_GET_STATE",
   setBulkMode: "GPTBD_SET_BULK_MODE",
   setLanguage: "GPTBD_SET_LANGUAGE",
   setSidebarControls: "GPTBD_SET_SIDEBAR_CONTROLS",
+  setSpeedMode: "GPTBD_SET_SPEED_MODE",
   selectAllVisible: "GPTBD_SELECT_ALL_VISIBLE",
   clearSelection: "GPTBD_CLEAR_SELECTION",
   archiveSelected: "GPTBD_ARCHIVE_SELECTED",
@@ -108,8 +112,10 @@ class BulkDeleteController {
   private bulkMode = false;
   private language: LanguageCode = getDefaultLanguage();
   private sidebarControls = true;
+  private speedMode = false;
   private selectedIds = new Set<string>();
   private rows = new Map<string, ConversationRow>();
+  private speedControls = new SpeedControls();
   private host: HTMLElement;
   private shadow: ShadowRoot;
   private overlayRoot: HTMLElement;
@@ -208,8 +214,10 @@ class BulkDeleteController {
       STORAGE_KEYS.sidebarControls,
       FIRST_RUN_DEFAULTS.sidebarControls
     );
+    this.speedMode = await storageGet(STORAGE_KEYS.speedMode, FIRST_RUN_DEFAULTS.speedMode);
     setActiveLanguage(this.language);
     this.syncStaticI18n();
+    this.speedControls.init(this.speedMode, this.language);
     this.bindRuntimeMessages();
     this.bindPageListeners();
     this.observer.observe(document.body, { childList: true, subtree: true });
@@ -226,6 +234,7 @@ class BulkDeleteController {
       isDeleting: this.isDeleting,
       language: this.language,
       sidebarControls: this.sidebarControls,
+      speedMode: this.speedMode,
       lastDeleteSummary: this.lastDeleteSummary
     };
   }
@@ -247,6 +256,7 @@ class BulkDeleteController {
     this.language = normalizeLanguage(language);
     setActiveLanguage(this.language);
     this.syncStaticI18n();
+    this.speedControls.setLanguage(this.language);
     void storageSet(STORAGE_KEYS.language, this.language);
     this.refresh();
     return this.getState();
@@ -260,6 +270,17 @@ class BulkDeleteController {
     this.sidebarControls = enabled;
     void storageSet(STORAGE_KEYS.sidebarControls, enabled);
     this.render();
+    return this.getState();
+  }
+
+  async setSpeedMode(enabled: boolean): Promise<ExtensionState> {
+    if (this.speedMode === enabled) {
+      return this.getState();
+    }
+
+    this.speedMode = enabled;
+    void storageSet(STORAGE_KEYS.speedMode, enabled);
+    await this.speedControls.setEnabled(enabled);
     return this.getState();
   }
 
@@ -318,6 +339,7 @@ class BulkDeleteController {
             isDeleting: this.isDeleting,
             language: this.language,
             sidebarControls: this.sidebarControls,
+            speedMode: this.speedMode,
             error: getErrorMessage(error)
           });
         });
@@ -337,6 +359,8 @@ class BulkDeleteController {
         return this.setLanguage(message.language);
       case MESSAGE_TYPES.setSidebarControls:
         return this.setSidebarControls(message.enabled);
+      case MESSAGE_TYPES.setSpeedMode:
+        return this.setSpeedMode(message.enabled);
       case MESSAGE_TYPES.selectAllVisible:
         return this.selectAllVisible();
       case MESSAGE_TYPES.clearSelection:

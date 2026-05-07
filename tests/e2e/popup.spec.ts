@@ -12,7 +12,8 @@ test("popup switches between Korean and English UI", async ({ page }) => {
   await page.addInitScript(() => {
     const storage: Record<string, unknown> = {
       "gptbd.language": "ko",
-      "gptbd.sidebarControls": true
+      "gptbd.sidebarControls": true,
+      "gptbd.speedMode": false
     };
 
     window.__popupStorage = storage;
@@ -46,6 +47,9 @@ test("popup switches between Korean and English UI", async ({ page }) => {
           if (message.type === "GPTBD_SET_SIDEBAR_CONTROLS") {
             storage["gptbd.sidebarControls"] = Boolean(message.enabled);
           }
+          if (message.type === "GPTBD_SET_SPEED_MODE") {
+            storage["gptbd.speedMode"] = Boolean(message.enabled);
+          }
 
           return {
             available: true,
@@ -54,7 +58,8 @@ test("popup switches between Korean and English UI", async ({ page }) => {
             visibleCount: 0,
             isDeleting: false,
             language: storage["gptbd.language"] ?? "ko",
-            sidebarControls: storage["gptbd.sidebarControls"] ?? true
+            sidebarControls: storage["gptbd.sidebarControls"] ?? true,
+            speedMode: storage["gptbd.speedMode"] ?? false
           };
         }
       }
@@ -70,6 +75,10 @@ test("popup switches between Korean and English UI", async ({ page }) => {
     "aria-checked",
     "true"
   );
+  await expect(page.getByRole("switch", { name: "긴 대화 속도 모드" })).toHaveAttribute(
+    "aria-checked",
+    "false"
+  );
 
   await page.getByRole("button", { name: "영어로 전환" }).click();
 
@@ -83,4 +92,11 @@ test("popup switches between Korean and English UI", async ({ page }) => {
     "false"
   );
   await expect.poll(() => page.evaluate(() => window.__popupStorage["gptbd.sidebarControls"])).toBe(false);
+
+  await page.getByRole("switch", { name: "Speed mode for long conversations" }).click();
+  await expect(page.getByRole("switch", { name: "Speed mode for long conversations" })).toHaveAttribute(
+    "aria-checked",
+    "true"
+  );
+  await expect.poll(() => page.evaluate(() => window.__popupStorage["gptbd.speedMode"])).toBe(true);
 });

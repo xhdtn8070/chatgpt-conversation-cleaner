@@ -33,6 +33,11 @@ const EN_MESSAGES = {
   popupSidebarPanelLabel: { message: "Sidebar panel" },
   popupSidebarPanelHint: { message: "Show bulk controls inside ChatGPT's sidebar." },
   popupSidebarPanelAria: { message: "Show sidebar bulk controls" },
+  popupSpeedModeLabel: { message: "Speed mode" },
+  popupSpeedModeHint: {
+    message: "Open long chats with only recent messages rendered first."
+  },
+  popupSpeedModeAria: { message: "Speed mode for long conversations" },
   languageToggleAria: { message: "Switch language to $language", placeholders: ["language"] },
   languageEnglish: { message: "English" },
   languageKorean: { message: "Korean" },
@@ -72,6 +77,9 @@ const KO_MESSAGES: Record<MessageKey, MessageDefinition> = {
   popupSidebarPanelLabel: { message: "좌측 패널" },
   popupSidebarPanelHint: { message: "ChatGPT 사이드바 안에 일괄 컨트롤을 표시합니다." },
   popupSidebarPanelAria: { message: "좌측 일괄 컨트롤 표시" },
+  popupSpeedModeLabel: { message: "속도 모드" },
+  popupSpeedModeHint: { message: "긴 대화는 최근 메시지만 먼저 렌더링합니다." },
+  popupSpeedModeAria: { message: "긴 대화 속도 모드" },
   languageToggleAria: { message: "$language로 전환", placeholders: ["language"] },
   languageEnglish: { message: "영어" },
   languageKorean: { message: "한국어" },

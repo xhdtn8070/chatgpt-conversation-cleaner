@@ -57,7 +57,20 @@ const EN_MESSAGES = {
   summaryDeleteFailed: {
     message: "$done deleted, $failed failed. Failed items remain selected.",
     placeholders: ["done", "failed"]
-  }
+  },
+  speedModeAria: { message: "Speed mode for long conversations" },
+  speedHiddenSummary: {
+    message: "$hidden hidden · $visible shown",
+    placeholders: ["hidden", "visible"]
+  },
+  speedLoadMore: { message: "Load $count more", placeholders: ["count"] },
+  speedViewAll: { message: "View all" },
+  speedPreparing: { message: "Speed mode will apply after this conversation reloads." },
+  speedUserRole: { message: "User" },
+  speedAssistantRole: { message: "Assistant" },
+  speedToolRole: { message: "Tool" },
+  speedUnknownRole: { message: "Message" },
+  speedTruncated: { message: "Content truncated for preview." }
 } as const satisfies Record<string, MessageDefinition>;
 
 export type MessageKey = keyof typeof EN_MESSAGES;
@@ -112,7 +125,20 @@ const KO_MESSAGES: Record<MessageKey, MessageDefinition> = {
   summaryDeleteFailed: {
     message: "$done개 삭제됨, $failed개 실패. 실패 항목은 선택 상태로 남아 있습니다.",
     placeholders: ["done", "failed"]
-  }
+  },
+  speedModeAria: { message: "긴 대화 속도 모드" },
+  speedHiddenSummary: {
+    message: "$hidden개 숨김 · $visible개 표시 중",
+    placeholders: ["hidden", "visible"]
+  },
+  speedLoadMore: { message: "$count개 더 보기", placeholders: ["count"] },
+  speedViewAll: { message: "전체 보기" },
+  speedPreparing: { message: "이 대화를 다시 열면 속도 모드가 적용됩니다." },
+  speedUserRole: { message: "사용자" },
+  speedAssistantRole: { message: "Assistant" },
+  speedToolRole: { message: "도구" },
+  speedUnknownRole: { message: "메시지" },
+  speedTruncated: { message: "미리보기용으로 내용이 일부 줄었습니다." }
 };
 
 let activeLanguage = getDefaultLanguage();

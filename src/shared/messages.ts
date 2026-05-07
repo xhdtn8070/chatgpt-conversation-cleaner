@@ -1,12 +1,14 @@
 export const STORAGE_KEYS = {
   bulkMode: "gptbd.bulkMode",
   language: "gptbd.language",
-  sidebarControls: "gptbd.sidebarControls"
+  sidebarControls: "gptbd.sidebarControls",
+  speedMode: "gptbd.speedMode"
 } as const;
 
 export const FIRST_RUN_DEFAULTS = {
   bulkMode: false,
-  sidebarControls: true
+  sidebarControls: true,
+  speedMode: false
 } as const;
 
 export const MESSAGE_TYPES = {
@@ -14,6 +16,7 @@ export const MESSAGE_TYPES = {
   setBulkMode: "GPTBD_SET_BULK_MODE",
   setLanguage: "GPTBD_SET_LANGUAGE",
   setSidebarControls: "GPTBD_SET_SIDEBAR_CONTROLS",
+  setSpeedMode: "GPTBD_SET_SPEED_MODE",
   selectAllVisible: "GPTBD_SELECT_ALL_VISIBLE",
   clearSelection: "GPTBD_CLEAR_SELECTION",
   archiveSelected: "GPTBD_ARCHIVE_SELECTED",
@@ -44,6 +47,7 @@ export type ExtensionState = {
   isDeleting: boolean;
   language: LanguagePreference;
   sidebarControls: boolean;
+  speedMode: boolean;
   lastDeleteSummary?: DeleteSummary;
 };
 
@@ -52,6 +56,7 @@ export type ExtensionMessage =
   | { type: typeof MESSAGE_TYPES.setBulkMode; enabled: boolean }
   | { type: typeof MESSAGE_TYPES.setLanguage; language: LanguagePreference }
   | { type: typeof MESSAGE_TYPES.setSidebarControls; enabled: boolean }
+  | { type: typeof MESSAGE_TYPES.setSpeedMode; enabled: boolean }
   | { type: typeof MESSAGE_TYPES.selectAllVisible }
   | { type: typeof MESSAGE_TYPES.clearSelection }
   | { type: typeof MESSAGE_TYPES.archiveSelected }

@@ -25,6 +25,12 @@
   "content_scripts": [
     {
       "matches": ["https://chatgpt.com/*", "https://chat.openai.com/*"],
+      "js": ["assets/speed-main.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://chatgpt.com/*", "https://chat.openai.com/*"],
       "js": ["assets/content.js"],
       "run_at": "document_idle"
     }
