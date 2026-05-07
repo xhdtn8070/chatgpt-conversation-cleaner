@@ -5,51 +5,53 @@
 <h1 align="center">Conversation Cleaner for ChatGPT</h1>
 
 <p align="center">
-  A Manifest V3 Chrome extension that adds stable bulk cleanup and long-chat speed controls to ChatGPT.
-  Select conversations safely, archive/delete them with confirmation, and keep long threads focused on recent messages first.
+  A polished Chrome extension for cleaning up crowded ChatGPT sidebars and opening long conversations without the initial drag.
 </p>
 
 <p align="center">
-  <strong>API-first cleanup</strong> · <strong>Long-chat speed mode</strong> · <strong>No third-party servers</strong>
+  <strong>Bulk cleanup</strong> · <strong>Sidebar controls</strong> · <strong>Long-chat speed mode</strong> · <strong>Local-first</strong>
 </p>
 
 <p align="center">
+  <img src="https://img.shields.io/badge/Chrome-MV3-0f7a55?logo=googlechrome&logoColor=white" alt="Chrome Manifest V3">
+  <img src="https://img.shields.io/badge/Privacy-local--first-0f7a55" alt="Local-first privacy">
+  <img src="https://img.shields.io/badge/License-MIT-111111" alt="MIT license">
   <a href="https://github.com/sponsors/xhdtn8070">
     <img src="https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-ea4aaa?logo=githubsponsors&logoColor=white" alt="Sponsor on GitHub">
   </a>
-  <br>
-  <a href="https://github.com/xhdtn8070/chatgpt-conversation-cleaner">View source on GitHub</a>
 </p>
 
-![Conversation Cleaner sidebar mockup](docs/ux-mockup.png)
+<p align="center">
+  <img src="docs/readme-hero.png" alt="Conversation Cleaner product hero showing bulk cleanup controls, selected sidebar rows, and speed mode panels">
+</p>
 
-## Why This Exists
+## Why It Exists
 
-ChatGPT's sidebar rows are links, so adding checkboxes directly inside the row can accidentally navigate away or miss clicks. This extension keeps bulk selection in a dedicated overlay lane and makes row clicks toggle selection only while Bulk mode is on.
+ChatGPT histories get noisy fast. Conversation Cleaner adds a calm control layer for selecting, archiving, deleting, and speeding up long threads without sending your conversation data to any third-party server.
 
-The goal is a calmer cleanup flow:
+It is built around three ideas:
 
-- Turn on Bulk mode from the popup or inline sidebar control.
-- Select visible conversations with a large, stable click target.
-- Archive or delete selected conversations.
-- Keep pinned conversations protected until the user unpins them.
-- Optionally turn on Speed mode before opening long conversations.
+- Keep the ChatGPT sidebar stable while adding real bulk controls.
+- Prefer ChatGPT's same-origin API, with a scoped visible-UI fallback when needed.
+- Hide older turns in long chats locally, then reveal them in place when you ask.
 
-## Features
+## Highlights
+
+| Cleanup | Speed | Trust |
+| --- | --- | --- |
+| Select visible conversations, then archive or delete them with confirmation. | Keep long chats focused on the newest messages first, then load older turns without a refresh. | Runs locally in the browser and stores settings in `chrome.storage.local`. |
+| Optional inline sidebar panel keeps common actions close to the conversation list. | Configurable initial count and load-more size from the popup. | Pinned chats are protected until you unpin them in ChatGPT. |
+
+## Feature Details
 
 ### Bulk Cleanup
 
-- Dedicated checkbox lane that does not shift ChatGPT's sidebar layout.
-- Bulk mode row-click interception, so clicking a title selects instead of navigating.
+- Dedicated selection lane that avoids accidental navigation.
+- Row-click selection while Cleanup mode is on.
 - Select all, deselect all, clear, archive, and delete actions.
 - API-first archive/delete using ChatGPT's same-origin web API.
-- Scoped UI fallback that only interacts with active ChatGPT menus and dialogs.
-- Destructive action confirmation before deletion.
-- Pinned conversation guardrails.
-- Local settings only through `chrome.storage.local`.
-- English and Korean extension UI through Chrome i18n locales.
-- Popup language toggle for switching the extension UI between English and Korean.
-- Optional sidebar control panel when you prefer controlling everything from the extension popup.
+- Scoped fallback that only interacts with the active ChatGPT menu or confirmation dialog.
+- Destructive action confirmation and pinned-conversation guardrails.
 
 ### Long-Chat Speed Mode
 
@@ -60,6 +62,13 @@ The goal is a calmer cleanup flow:
 - `Load 5 more` and `View all` reveal existing ChatGPT DOM in place without route changes, fixed coordinates, or page refreshes.
 - Scroll anchoring keeps the current reading position stable when older messages are revealed.
 - Speed mode does not patch ChatGPT's private conversation fetch response.
+
+### Popup And Sidebar Controls
+
+- Master switch for quickly disabling all extension behavior.
+- Cleanup mode and sidebar panel controls are separated, so the popup stays compact.
+- English and Korean UI with an in-popup language toggle.
+- Optional GitHub Sponsors link for supporting continued open-source work.
 
 ## Safety Model
 
@@ -92,7 +101,7 @@ Then load the extension:
 1. Open `chrome://extensions` in Chrome.
 2. Enable Developer mode.
 3. Click Load unpacked.
-4. Select `/Users/xhddlf8070/Desktop/git/gpt-bulk-delete/dist`.
+4. Select the generated `dist/` folder from this repository.
 
 After rebuilding, click Reload on the extension card in `chrome://extensions`.
 
@@ -103,12 +112,14 @@ npm run typecheck
 npm run test
 npm run test:browser
 npm run build
+npm run hero
 ```
 
 Useful scripts:
 
 - `npm run icons`: render PNG icon sizes from `public/icons/icon.svg`.
 - `npm run build`: build the unpacked extension into `dist/`.
+- `npm run hero`: regenerate the README hero image from a clean demo layout.
 - `npm run test`: run unit tests for parsing, selection, and positioning.
 - `npm run test:browser`: run Playwright coverage against the mock ChatGPT sidebar and long-chat fixture.
 
@@ -123,7 +134,7 @@ src/popup/                 Extension popup UI
 src/shared/                Message contracts
 fixtures/                  Mock ChatGPT pages for browser tests
 tests/                     Unit and browser tests
-docs/ux-mockup.png         UX direction mockup
+docs/readme-hero.png       README hero image
 ```
 
 ## Privacy
