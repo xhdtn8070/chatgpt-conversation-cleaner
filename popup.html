@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ChatGPT Bulk Delete</title>
+  </head>
+  <body>
+    <main id="app" class="popup-shell">
+      <section class="header">
+        <div>
+          <p class="eyebrow">ChatGPT</p>
+          <h1>Bulk Delete</h1>
+        </div>
+        <label class="switch" title="Toggle bulk selection mode">
+          <input id="bulkMode" type="checkbox" />
+          <span aria-hidden="true"></span>
+        </label>
+      </section>
+
+      <section class="status-panel" aria-live="polite">
+        <div>
+          <span class="label">Status</span>
+          <strong id="statusText">Connecting...</strong>
+        </div>
+        <div>
+          <span class="label">Visible</span>
+          <strong id="visibleCount">0</strong>
+        </div>
+        <div>
+          <span class="label">Selected</span>
+          <strong id="selectedCount">0</strong>
+        </div>
+      </section>
+
+      <section class="actions" aria-label="Bulk actions">
+        <button id="selectAll" type="button">Select all visible</button>
+        <button id="clear" type="button">Clear</button>
+        <button id="delete" class="danger" type="button">Delete</button>
+      </section>
+
+      <p id="hint" class="hint">
+        Open ChatGPT and turn on Bulk mode to show the sidebar checkbox lane.
+      </p>
+    </main>
+    <script type="module" src="/src/popup/main.ts"></script>
+  </body>
+</html>

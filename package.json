@@ -1,0 +1,23 @@
+{
+  "name": "gpt-bulk-delete",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A Manifest V3 Chrome extension for reliable bulk selection and deletion in the ChatGPT sidebar.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:browser": "npm run build && playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.53.0",
+    "@types/chrome": "^0.0.326",
+    "@types/node": "^25.6.0",
+    "jsdom": "^26.1.0",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5",
+    "vitest": "^3.1.4"
+  }
+}
