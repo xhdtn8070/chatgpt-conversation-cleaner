@@ -46,9 +46,12 @@ test("content script renders stable checkbox overlay and isolates row clicks", a
   const actionBar = page.locator("#gptbd-root .action-bar");
   const actionBarBox = await actionBar.boundingBox();
   const recentBox = await page.getByText("Recent", { exact: true }).boundingBox();
+  const sidebarBox = await page.locator("nav").boundingBox();
   expect(actionBarBox).not.toBeNull();
   expect(recentBox).not.toBeNull();
-  expect(actionBarBox!.y + actionBarBox!.height).toBeLessThanOrEqual(recentBox!.y + 2);
+  expect(sidebarBox).not.toBeNull();
+  expect(actionBarBox!.y).toBeGreaterThanOrEqual(recentBox!.y + recentBox!.height - 2);
+  expect(actionBarBox!.x + actionBarBox!.width).toBeLessThanOrEqual(sidebarBox!.x + sidebarBox!.width);
 
   await alphaCheckbox.click();
   await expect(page.locator("#row-alpha")).toHaveAttribute("data-gptbd-row-selected", "true");
@@ -65,9 +68,19 @@ test("content script renders stable checkbox overlay and isolates row clicks", a
   await expect(page.getByText("2 selected")).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.__navigated)).toBe(false);
 
-  await page.getByText("Select all", { exact: true }).click();
+  await page.getByRole("link", { name: /gamma qa checklist/i }).dispatchEvent("pointerdown", {
+    button: 0
+  });
+  await expect(page.locator("#row-gamma")).toHaveAttribute("data-gptbd-row-selected", "true");
+  await page.getByRole("link", { name: /gamma qa checklist/i }).dispatchEvent("click", {
+    button: 0
+  });
+  await expect.poll(() => page.evaluate(() => window.__navigated)).toBe(false);
   await expect(page.getByText("Deselect all", { exact: true })).toBeVisible();
 
   await page.getByText("Deselect all", { exact: true }).click();
   await expect(page.getByText("0 selected", { exact: true })).toBeVisible();
+
+  await page.getByText("Select all", { exact: true }).click();
+  await expect(page.getByText("Deselect all", { exact: true })).toBeVisible();
 });

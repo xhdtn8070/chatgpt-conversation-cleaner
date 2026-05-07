@@ -41,14 +41,12 @@ export const SHADOW_CSS = `
   border-radius: 4px;
   box-sizing: border-box;
   background: color-mix(in srgb, Canvas 92%, transparent);
-  box-shadow: 0 1px 3px color-mix(in srgb, CanvasText 12%, transparent);
   transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
 }
 
 .checkbox-target[aria-checked="true"] .checkbox-visual {
   border-color: #0f7a55;
   background: #0f7a55;
-  box-shadow: 0 1px 4px color-mix(in srgb, #0f7a55 36%, transparent);
 }
 
 .checkbox-target[aria-checked="true"] .checkbox-visual::after {
@@ -73,16 +71,17 @@ export const SHADOW_CSS = `
   border: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
   border-radius: 8px;
   background: color-mix(in srgb, Canvas 94%, transparent);
-  box-shadow: 0 8px 26px color-mix(in srgb, CanvasText 18%, transparent);
-  backdrop-filter: blur(14px);
+  overflow: hidden;
   pointer-events: auto;
 }
 
 .selected-count {
   flex: 1 1 auto;
-  min-width: 72px;
+  min-width: 64px;
   color: CanvasText;
   font: 600 12px/1.2 ui-sans-serif, system-ui, sans-serif;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -96,7 +95,7 @@ export const SHADOW_CSS = `
   color: CanvasText;
   cursor: pointer;
   font: 600 12px/1 ui-sans-serif, system-ui, sans-serif;
-  padding: 0 9px;
+  padding: 0 8px;
   white-space: nowrap;
 }
 

@@ -48,8 +48,8 @@ class BulkDeleteController {
   private refreshQueued = false;
   private isDeleting = false;
   private lastDeleteSummary: DeleteSummary | undefined;
-  private handleBulkRowClick = (event: MouseEvent): void => {
-    if (!this.bulkMode || this.isDeleting || event.defaultPrevented) {
+  private handleBulkRowPointerDown = (event: PointerEvent): void => {
+    if (!this.bulkMode || this.isDeleting || event.defaultPrevented || event.button !== 0) {
       return;
     }
 
@@ -64,6 +64,20 @@ class BulkDeleteController {
     this.selectedIds = toggleSelection(this.selectedIds, row.id);
     this.lastDeleteSummary = undefined;
     this.render();
+  };
+  private handleBulkRowMouseDown = (event: MouseEvent): void => {
+    if (!this.bulkMode || this.isDeleting || event.button !== 0) {
+      return;
+    }
+
+    this.suppressBulkRowNavigation(event);
+  };
+  private handleBulkRowClick = (event: MouseEvent): void => {
+    if (!this.bulkMode || this.isDeleting || event.button !== 0) {
+      return;
+    }
+
+    this.suppressBulkRowNavigation(event);
   };
 
   constructor() {
@@ -189,6 +203,8 @@ class BulkDeleteController {
   private bindPageListeners(): void {
     window.addEventListener("resize", () => this.scheduleRefresh(), { passive: true });
     window.addEventListener("scroll", () => this.scheduleRefresh(), { capture: true, passive: true });
+    document.addEventListener("pointerdown", this.handleBulkRowPointerDown, true);
+    document.addEventListener("mousedown", this.handleBulkRowMouseDown, true);
     document.addEventListener("click", this.handleBulkRowClick, true);
   }
 
@@ -276,7 +292,7 @@ class BulkDeleteController {
       ? this.toolbarSpacer.getBoundingClientRect()
       : null;
     const left = Math.max(sidebarRect.left + 8, 8);
-    const availableWidth = Math.max(0, window.innerWidth - left - 8);
+    const availableWidth = Math.max(0, sidebarRect.right - left - 8);
     this.actionBar.style.left = `${left}px`;
     this.actionBar.style.top = `${this.getActionBarTop(sidebarRect, toolbarRect)}px`;
     this.actionBar.style.bottom = "auto";
@@ -325,12 +341,12 @@ class BulkDeleteController {
     }
 
     if (this.toolbarSpacer.parentElement !== anchor.parentElement) {
-      anchor.before(this.toolbarSpacer);
+      anchor.after(this.toolbarSpacer);
       return;
     }
 
-    if (this.toolbarSpacer.nextElementSibling !== anchor) {
-      anchor.before(this.toolbarSpacer);
+    if (this.toolbarSpacer.previousElementSibling !== anchor) {
+      anchor.after(this.toolbarSpacer);
     }
   }
 
@@ -470,6 +486,21 @@ class BulkDeleteController {
     }
 
     return null;
+  }
+
+  private suppressBulkRowNavigation(event: MouseEvent): void {
+    if (event.defaultPrevented) {
+      return;
+    }
+
+    const row = this.findRowFromEvent(event);
+
+    if (!row) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
   }
 
   private findHistoryHeader(): HTMLElement | null {
