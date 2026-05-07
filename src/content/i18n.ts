@@ -65,12 +65,14 @@ const EN_MESSAGES = {
   },
   speedLoadMore: { message: "Load $count more", placeholders: ["count"] },
   speedViewAll: { message: "View all" },
-  speedPreparing: { message: "Speed mode will apply after this conversation reloads." },
+  speedAllShown: { message: "All shown" },
   speedUserRole: { message: "User" },
   speedAssistantRole: { message: "Assistant" },
   speedToolRole: { message: "Tool" },
   speedUnknownRole: { message: "Message" },
-  speedTruncated: { message: "Content truncated for preview." }
+  speedTruncated: { message: "Content truncated for preview." },
+  speedExpandTurn: { message: "Show more" },
+  speedCollapseTurn: { message: "Collapse" }
 } as const satisfies Record<string, MessageDefinition>;
 
 export type MessageKey = keyof typeof EN_MESSAGES;
@@ -133,12 +135,14 @@ const KO_MESSAGES: Record<MessageKey, MessageDefinition> = {
   },
   speedLoadMore: { message: "$count개 더 보기", placeholders: ["count"] },
   speedViewAll: { message: "전체 보기" },
-  speedPreparing: { message: "이 대화를 다시 열면 속도 모드가 적용됩니다." },
+  speedAllShown: { message: "모두 표시됨" },
   speedUserRole: { message: "사용자" },
   speedAssistantRole: { message: "Assistant" },
   speedToolRole: { message: "도구" },
   speedUnknownRole: { message: "메시지" },
-  speedTruncated: { message: "미리보기용으로 내용이 일부 줄었습니다." }
+  speedTruncated: { message: "미리보기용으로 내용이 일부 줄었습니다." },
+  speedExpandTurn: { message: "펼치기" },
+  speedCollapseTurn: { message: "접기" }
 };
 
 let activeLanguage = getDefaultLanguage();

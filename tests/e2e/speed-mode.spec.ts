@@ -59,26 +59,33 @@ test("speed mode trims ChatGPT conversation fetch and reveals cached older messa
   });
 
   await page.goto("https://chatgpt.com/c/speed-alpha");
-  await page.waitForFunction(() => document.querySelectorAll("section[data-testid^='conversation-turn-']").length === 20);
+  await page.waitForFunction(() => document.querySelectorAll("section[data-testid^='conversation-turn-']").length === 10);
   await expect.poll(() => apiCalls).toBe(1);
 
   await page.addScriptTag({ path: resolve("dist/assets/content.js") });
   await page.waitForSelector("html[data-gptbd-ready='true']");
 
-  await expect(page.getByText("10 hidden · 20 shown")).toBeVisible();
+  await expect(page.getByText("20 hidden · 10 shown")).toBeVisible();
   await page.getByRole("button", { name: "Load 2 more" }).click();
   await expect(page.locator(".gptbd-speed-turn")).toHaveCount(2);
-  await expect(page.getByText("8 hidden · 22 shown")).toBeVisible();
+  await expect(page.getByText("18 hidden · 12 shown")).toBeVisible();
+  await expect(page.locator(".gptbd-speed-body").first()).toHaveCSS("overflow", "hidden");
+  await expect(page.getByRole("button", { name: "Show more" })).toBeVisible();
+  await page.getByRole("button", { name: "Show more" }).click();
+  await expect(page.getByRole("button", { name: "Collapse" })).toBeVisible();
   await expect.poll(() => apiCalls).toBe(1);
 
   await page.getByRole("button", { name: "Load 2 more" }).click();
   await expect(page.locator(".gptbd-speed-turn")).toHaveCount(4);
-  await expect(page.getByText("6 hidden · 24 shown")).toBeVisible();
+  await expect(page.getByText("16 hidden · 14 shown")).toBeVisible();
   await expect.poll(() => apiCalls).toBe(1);
 
   await page.getByRole("button", { name: "View all" }).click();
-  await page.waitForFunction(() => document.querySelectorAll("section[data-testid^='conversation-turn-']").length === 30);
-  await expect.poll(() => apiCalls).toBe(2);
+  await expect(page.locator(".gptbd-speed-turn")).toHaveCount(20);
+  await expect(page.getByText("0 hidden · 30 shown")).toBeVisible();
+  await expect(page.getByRole("button", { name: "All shown" })).toBeDisabled();
+  await expect(page.locator("section[data-testid^='conversation-turn-']")).toHaveCount(10);
+  await expect.poll(() => apiCalls).toBe(1);
 });
 
 function conversationHtml(): string {
@@ -90,7 +97,7 @@ function conversationHtml(): string {
     <script>
       localStorage.setItem("gptbd.speedBridge", JSON.stringify({
         enabled: true,
-        visibleMessages: 20,
+        visibleMessages: 10,
         batchMessages: 2
       }));
       window.__speedApiCalls = window.__speedApiCalls || 0;
@@ -171,7 +178,7 @@ function buildConversation(messageCount: number): Record<string, unknown> {
         create_time: index,
         content: {
           content_type: "text",
-          parts: [`Message ${index}`]
+          parts: [index === 19 ? longMessage(index) : `Message ${index}`]
         }
       }
     };
@@ -182,4 +189,8 @@ function buildConversation(messageCount: number): Record<string, unknown> {
     current_node: `msg-${messageCount}`,
     root: "root"
   };
+}
+
+function longMessage(index: number): string {
+  return Array.from({ length: 42 }, (_, line) => `Message ${index} long line ${line + 1}`).join("\n");
 }

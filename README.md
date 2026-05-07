@@ -47,9 +47,10 @@ The goal is a calmer cleanup flow:
 
 - Optional Speed mode toggle in the popup.
 - MAIN-world `fetch` interception at `document_start` for ChatGPT conversation detail API responses.
-- Keeps only the latest 20 messages in ChatGPT's native render path by default.
+- Keeps only the latest 10 messages in ChatGPT's native render path by default.
 - Keeps the original response in page memory only, so `Load 2 more` can reveal older messages in lightweight extension-rendered cards without another API call.
-- `View all` performs a one-shot full reload with trimming disabled.
+- Keeps long cached-message cards collapsed by default so large prompts do not break the conversation layout.
+- `View all` renders all cached older messages into the existing page without a reload.
 - Page-memory cache is cleared by refresh, tab close, or navigation away from the current page context.
 
 ## Safety Model

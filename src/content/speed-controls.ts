@@ -2,7 +2,7 @@ import { t, type LanguageCode, type MessageKey } from "./i18n";
 
 export const SPEED_BRIDGE_KEY = "gptbd.speedBridge";
 export const SPEED_DEFAULTS = {
-  visibleMessages: 20,
+  visibleMessages: 10,
   batchMessages: 2
 } as const;
 
@@ -243,12 +243,13 @@ export class SpeedControls {
 
     if (loadMore) {
       loadMore.textContent =
-        batchSize > 0 ? t("speedLoadMore", { count: batchSize }) : t("speedPreparing");
+        batchSize > 0 ? t("speedLoadMore", { count: batchSize }) : t("speedAllShown");
       loadMore.disabled = batchSize === 0;
     }
 
     if (viewAll) {
       viewAll.textContent = t("speedViewAll");
+      viewAll.disabled = hiddenRemaining === 0;
     }
 
     const older = await this.requestOlder(this.renderedOlderCount).catch(() => []);
@@ -307,8 +308,14 @@ export class SpeedControls {
   }
 
   private async handleViewAll(): Promise<void> {
-    await this.requestPage("GPTBD_SPEED_BYPASS_FULL", {});
-    window.location.reload();
+    const status = await this.requestStatus().catch(() => null);
+
+    if (!status?.cacheReady) {
+      return;
+    }
+
+    this.renderedOlderCount = Math.max(0, status.hiddenVisible ?? 0);
+    await this.render(status);
   }
 
   private renderOlderTurns(turns: SpeedTurn[]): void {
@@ -322,6 +329,7 @@ export class SpeedControls {
   private createTurnPreview(turn: SpeedTurn): HTMLElement {
     const article = document.createElement("article");
     article.className = "gptbd-speed-turn";
+    article.dataset.expanded = "false";
 
     const role = document.createElement("span");
     role.className = "gptbd-speed-role";
@@ -332,6 +340,21 @@ export class SpeedControls {
     body.textContent = turn.text || t("speedUnknownRole");
 
     article.append(role, body);
+
+    if (shouldCollapseTurn(turn)) {
+      const expand = document.createElement("button");
+      expand.type = "button";
+      expand.className = "gptbd-speed-expand";
+      expand.textContent = t("speedExpandTurn");
+      expand.addEventListener("click", () => {
+        const expanded = article.dataset.expanded === "true";
+        article.dataset.expanded = String(!expanded);
+        expand.textContent = t(expanded ? "speedExpandTurn" : "speedCollapseTurn");
+      });
+      article.append(expand);
+    } else {
+      article.dataset.expanded = "true";
+    }
 
     if (turn.truncated) {
       const truncated = document.createElement("span");
@@ -446,4 +469,8 @@ function roleMessageKey(role: SpeedTurn["role"]): MessageKey {
   }
 
   return "speedUnknownRole";
+}
+
+function shouldCollapseTurn(turn: SpeedTurn): boolean {
+  return turn.truncated || turn.text.length > 900 || turn.text.split("\n").length > 8;
 }

@@ -26,7 +26,7 @@ export type ConversationTrimResult = {
 };
 
 const CONVERSATION_API_ID = /\/backend-api\/conversation\/([^/?#]+)/;
-const DISPLAY_TEXT_LIMIT = 12000;
+const DISPLAY_TEXT_LIMIT = 4000;
 const VISIBLE_ROLES = new Set(["user", "assistant", "tool"]);
 
 type JsonRecord = Record<string, unknown>;

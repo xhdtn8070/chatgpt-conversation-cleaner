@@ -406,10 +406,14 @@ html.gptbd-bulk-active [data-gptbd-force-menu="true"] button[aria-label*="option
 .gptbd-speed-turn {
   display: grid !important;
   gap: 6px !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
   padding: 10px 12px !important;
   border: 1px solid color-mix(in srgb, CanvasText 10%, transparent) !important;
   border-radius: 8px !important;
   background: color-mix(in srgb, CanvasText 4%, Canvas) !important;
+  box-sizing: border-box !important;
+  contain: content !important;
 }
 
 .gptbd-speed-role {
@@ -424,8 +428,30 @@ html.gptbd-bulk-active [data-gptbd-force-menu="true"] button[aria-label*="option
   color: CanvasText !important;
   font-size: 13px !important;
   line-height: 1.5 !important;
+  max-height: 11.75em !important;
+  overflow: hidden !important;
   overflow-wrap: anywhere !important;
   white-space: pre-wrap !important;
+}
+
+.gptbd-speed-turn[data-expanded="true"] .gptbd-speed-body {
+  max-height: none !important;
+}
+
+.gptbd-speed-expand {
+  justify-self: start !important;
+  min-height: 28px !important;
+  padding: 0 9px !important;
+  border: 1px solid color-mix(in srgb, CanvasText 12%, transparent) !important;
+  border-radius: 7px !important;
+  background: color-mix(in srgb, CanvasText 5%, Canvas) !important;
+  color: CanvasText !important;
+  cursor: pointer !important;
+  font: 700 12px/1 ui-sans-serif, system-ui, sans-serif !important;
+}
+
+.gptbd-speed-expand:hover {
+  background: color-mix(in srgb, CanvasText 9%, Canvas) !important;
 }
 
 .gptbd-speed-truncated {

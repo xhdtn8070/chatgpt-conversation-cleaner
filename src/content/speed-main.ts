@@ -14,7 +14,7 @@ const TRIMMED_ATTR = "data-gptbd-speed-trimmed";
 const CONVERSATION_ATTR = "data-gptbd-speed-conversation-id";
 const DEFAULT_SETTINGS: SpeedSettings = {
   enabled: false,
-  visibleMessages: 20,
+  visibleMessages: 10,
   batchMessages: 2
 };
 
@@ -337,7 +337,7 @@ function normalizeSettings(input: unknown): SpeedSettings {
 
   return {
     enabled: typeof raw.enabled === "boolean" ? raw.enabled : DEFAULT_SETTINGS.enabled,
-    visibleMessages: clampNumber(raw.visibleMessages, DEFAULT_SETTINGS.visibleMessages, 1, 200),
+    visibleMessages: DEFAULT_SETTINGS.visibleMessages,
     batchMessages: clampNumber(raw.batchMessages, DEFAULT_SETTINGS.batchMessages, 1, 50)
   };
 }
