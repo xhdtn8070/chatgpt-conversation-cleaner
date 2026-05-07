@@ -4,6 +4,11 @@ export const STORAGE_KEYS = {
   sidebarControls: "gptbd.sidebarControls"
 } as const;
 
+export const FIRST_RUN_DEFAULTS = {
+  bulkMode: false,
+  sidebarControls: true
+} as const;
+
 export const MESSAGE_TYPES = {
   getState: "GPTBD_GET_STATE",
   setBulkMode: "GPTBD_SET_BULK_MODE",

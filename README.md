@@ -44,6 +44,8 @@ The goal is a calmer cleanup flow:
 
 Conversation Cleaner avoids fixed-position clicking. It resolves the selected conversation row, opens only that row's menu when fallback is needed, then scopes follow-up clicks to the visible ChatGPT menu or confirmation dialog.
 
+First-run defaults are conservative: language follows the browser, Bulk mode starts off, and the optional sidebar control panel starts on.
+
 The action order is:
 
 1. Try ChatGPT's same-origin web API for the selected conversation.

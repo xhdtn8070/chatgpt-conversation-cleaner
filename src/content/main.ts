@@ -24,6 +24,10 @@ const STORAGE_KEYS = {
   language: "gptbd.language",
   sidebarControls: "gptbd.sidebarControls"
 } as const;
+const FIRST_RUN_DEFAULTS = {
+  bulkMode: false,
+  sidebarControls: true
+} as const;
 const MESSAGE_TYPES = {
   getState: "GPTBD_GET_STATE",
   setBulkMode: "GPTBD_SET_BULK_MODE",
@@ -198,9 +202,12 @@ class BulkDeleteController {
   }
 
   async init(): Promise<void> {
-    this.bulkMode = await storageGet(STORAGE_KEYS.bulkMode, false);
+    this.bulkMode = await storageGet(STORAGE_KEYS.bulkMode, FIRST_RUN_DEFAULTS.bulkMode);
     this.language = normalizeLanguage(await storageGet(STORAGE_KEYS.language, this.language));
-    this.sidebarControls = await storageGet(STORAGE_KEYS.sidebarControls, true);
+    this.sidebarControls = await storageGet(
+      STORAGE_KEYS.sidebarControls,
+      FIRST_RUN_DEFAULTS.sidebarControls
+    );
     setActiveLanguage(this.language);
     this.syncStaticI18n();
     this.bindRuntimeMessages();

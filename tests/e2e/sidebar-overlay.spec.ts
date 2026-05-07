@@ -11,6 +11,45 @@ declare global {
   }
 }
 
+test("content script uses first-run defaults from browser language", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.chrome = {
+      i18n: {
+        getUILanguage() {
+          return "ko-KR";
+        }
+      },
+      storage: {
+        local: {
+          get(key: string, callback: (items: Record<string, unknown>) => void) {
+            callback({ [key]: undefined });
+          },
+          set(_items: Record<string, unknown>, callback?: () => void) {
+            callback?.();
+          }
+        }
+      },
+      runtime: {
+        onMessage: {
+          addListener() {
+            return undefined;
+          }
+        }
+      }
+    } as unknown as typeof chrome;
+  });
+
+  await page.goto(pathToFileURL(resolve("fixtures/sidebar.html")).toString());
+  await page.addScriptTag({ path: resolve("dist/assets/content.js") });
+  await page.waitForSelector("html[data-gptbd-ready='true']");
+
+  await expect.poll(() => page.evaluate(() => window.__gptbdController?.getState().bulkMode)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.__gptbdController?.getState().language)).toBe("ko");
+  await expect.poll(() => page.evaluate(() => window.__gptbdController?.getState().sidebarControls)).toBe(true);
+  await expect(page.getByText("일괄 정리 꺼짐", { exact: true })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: /alpha planning thread/i })).toHaveCount(0);
+});
+
 test("content script renders stable checkbox overlay and isolates row clicks", async ({ page }) => {
   await page.addInitScript(() => {
     const storage: Record<string, unknown> = { "gptbd.bulkMode": true };

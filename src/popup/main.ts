@@ -1,4 +1,5 @@
 import {
+  FIRST_RUN_DEFAULTS,
   MESSAGE_TYPES,
   STORAGE_KEYS,
   type ExtensionMessage,
@@ -174,7 +175,7 @@ function renderUnavailable(): void {
   clear.textContent = t("actionClear");
   archiveButton.textContent = t("actionArchive");
   deleteButton.textContent = t("actionDelete");
-  sidebarPanelToggle.setAttribute("aria-checked", "true");
+  sidebarPanelToggle.setAttribute("aria-checked", String(FIRST_RUN_DEFAULTS.sidebarControls));
   selectAll.disabled = true;
   clear.disabled = true;
   archiveButton.disabled = true;
