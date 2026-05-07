@@ -165,6 +165,12 @@ strong {
   margin-top: 12px;
 }
 
+.settings-group {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
 .settings-row {
   display: flex;
   align-items: center;
@@ -175,6 +181,26 @@ strong {
   border: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
   border-radius: 8px;
   background: color-mix(in srgb, CanvasText 4%, Canvas);
+}
+
+.settings-group .settings-row {
+  margin-top: 0;
+}
+
+.nested-row {
+  margin-left: 12px;
+  padding-left: 12px;
+  border-left-color: color-mix(in srgb, #0f7a55 36%, transparent);
+}
+
+.feature-section {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
+}
+
+.feature-section .settings-row {
+  margin-top: 0;
 }
 
 .settings-row div {

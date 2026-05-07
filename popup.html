@@ -15,11 +15,45 @@
         </div>
         <div class="header-controls">
           <button id="languageToggle" class="language-toggle" type="button">KO</button>
-          <label id="bulkModeSwitch" class="switch" title="Toggle bulk selection mode">
-            <input id="bulkMode" type="checkbox" />
+          <label id="extensionEnabledSwitch" class="switch" title="Toggle extension">
+            <input id="extensionEnabled" type="checkbox" role="switch" checked />
             <span aria-hidden="true"></span>
           </label>
         </div>
+      </section>
+
+      <section class="settings-group" aria-label="Cleanup settings">
+        <section class="settings-row">
+          <div>
+            <strong id="cleanupModeLabel">Cleanup mode</strong>
+            <span id="cleanupModeHint">Enable sidebar selection and cleanup actions.</span>
+          </div>
+          <button
+            id="cleanupModeToggle"
+            class="mini-switch"
+            type="button"
+            role="switch"
+            aria-checked="false"
+          >
+            <span aria-hidden="true"></span>
+          </button>
+        </section>
+
+        <section class="settings-row nested-row">
+          <div>
+            <strong id="sidebarPanelLabel">Sidebar panel</strong>
+            <span id="sidebarPanelHint">Show bulk controls inside ChatGPT's sidebar.</span>
+          </div>
+          <button
+            id="sidebarPanelToggle"
+            class="mini-switch"
+            type="button"
+            role="switch"
+            aria-checked="true"
+          >
+            <span aria-hidden="true"></span>
+          </button>
+        </section>
       </section>
 
       <section class="status-panel" aria-live="polite">
@@ -44,37 +78,23 @@
         <button id="delete" class="danger" type="button">Delete</button>
       </section>
 
-      <section class="settings-row">
-        <div>
-          <strong id="sidebarPanelLabel">Sidebar panel</strong>
-          <span id="sidebarPanelHint">Show bulk controls inside ChatGPT's sidebar.</span>
-        </div>
-        <button
-          id="sidebarPanelToggle"
-          class="mini-switch"
-          type="button"
-          role="switch"
-          aria-checked="true"
-        >
-          <span aria-hidden="true"></span>
-        </button>
-      </section>
-
-      <section class="settings-row">
-        <div>
-          <strong id="speedModeLabel">Speed mode</strong>
-          <span id="speedModeHint">Open long chats with only recent messages rendered first.</span>
-          <span id="speedModeSummary">Initial 10 · Load 2 each</span>
-        </div>
-        <button
-          id="speedModeToggle"
-          class="mini-switch"
-          type="button"
-          role="switch"
-          aria-checked="false"
-        >
-          <span aria-hidden="true"></span>
-        </button>
+      <section class="feature-section" aria-label="Speed settings">
+        <section class="settings-row">
+          <div>
+            <strong id="speedModeLabel">Speed mode</strong>
+            <span id="speedModeHint">Open long chats with only recent messages rendered first.</span>
+            <span id="speedModeSummary">Initial 10 · Load 5 each</span>
+          </div>
+          <button
+            id="speedModeToggle"
+            class="mini-switch"
+            type="button"
+            role="switch"
+            aria-checked="false"
+          >
+            <span aria-hidden="true"></span>
+          </button>
+        </section>
       </section>
 
       <section id="speedSettings" class="speed-settings" aria-label="Speed mode settings" hidden>
@@ -84,7 +104,7 @@
         </label>
         <label>
           <span id="speedBatchLabel">Load more size</span>
-          <input id="speedBatchMessages" type="number" min="1" max="50" step="1" value="2" />
+          <input id="speedBatchMessages" type="number" min="1" max="50" step="1" value="5" />
         </label>
         <button id="speedSettingsSave" type="button">Save</button>
         <span id="speedSettingsSaved" class="saved-status" aria-live="polite"></span>

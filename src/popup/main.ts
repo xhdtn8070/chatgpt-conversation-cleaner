@@ -15,10 +15,13 @@ import {
 } from "../shared/i18n";
 import "./styles.css";
 
-const bulkMode = getElement<HTMLInputElement>("bulkMode");
-const bulkModeSwitch = getElement<HTMLLabelElement>("bulkModeSwitch");
+const extensionEnabled = getElement<HTMLInputElement>("extensionEnabled");
+const extensionEnabledSwitch = getElement<HTMLLabelElement>("extensionEnabledSwitch");
 const languageToggle = getElement<HTMLButtonElement>("languageToggle");
 const appHeading = getElement<HTMLElement>("appHeading");
+const cleanupModeLabel = getElement<HTMLElement>("cleanupModeLabel");
+const cleanupModeHint = getElement<HTMLElement>("cleanupModeHint");
+const cleanupModeToggle = getElement<HTMLButtonElement>("cleanupModeToggle");
 const statusLabel = getElement<HTMLElement>("statusLabel");
 const statusText = getElement<HTMLElement>("statusText");
 const visibleLabel = getElement<HTMLElement>("visibleLabel");
@@ -52,12 +55,22 @@ let currentLanguage: LanguageCode = getDefaultLanguage();
 setActiveLanguage(currentLanguage);
 applyStaticCopy();
 
-bulkMode.addEventListener("change", () => {
-  void sendAndRender({ type: MESSAGE_TYPES.setBulkMode, enabled: bulkMode.checked });
+extensionEnabled.addEventListener("change", () => {
+  void sendAndRender({
+    type: MESSAGE_TYPES.setExtensionEnabled,
+    enabled: extensionEnabled.checked
+  });
 });
 
 languageToggle.addEventListener("click", () => {
   void changeLanguage(currentLanguage === "ko" ? "en" : "ko");
+});
+
+cleanupModeToggle.addEventListener("click", () => {
+  void sendAndRender({
+    type: MESSAGE_TYPES.setBulkMode,
+    enabled: cleanupModeToggle.getAttribute("aria-checked") !== "true"
+  });
 });
 
 sidebarPanelToggle.addEventListener("click", () => {
@@ -160,20 +173,28 @@ function renderState(state: ExtensionState): void {
   }
 
   currentState = state;
-  bulkMode.checked = state.bulkMode;
+  extensionEnabled.checked = state.extensionEnabled;
+  extensionEnabled.disabled = state.isDeleting;
+  cleanupModeToggle.setAttribute("aria-checked", String(state.bulkMode));
   statusText.textContent = state.isDeleting
     ? t("popupStatusWorking")
-    : state.bulkMode
-      ? t("popupStatusOn")
-      : t("popupStatusOff");
+    : !state.extensionEnabled
+      ? t("popupStatusMasterOff")
+      : state.bulkMode
+        ? t("popupStatusOn")
+        : t("popupStatusReady");
   visibleCount.textContent = String(state.visibleCount);
   selectedCount.textContent = String(state.selectedCount);
   hint.textContent =
-    state.visibleCount > 0
-      ? t("popupHintReady")
-      : t("popupHintNoRows");
+    !state.extensionEnabled
+      ? t("popupHintDisabled")
+      : state.visibleCount > 0
+        ? state.bulkMode
+          ? t("popupHintReady")
+          : t("popupHintCleanupOff")
+        : t("popupHintNoRows");
 
-  const enabled = state.bulkMode && !state.isDeleting;
+  const enabled = state.extensionEnabled && state.bulkMode && !state.isDeleting;
   selectAll.textContent = isAllVisibleSelected(state) ? t("actionDeselectAll") : t("actionSelectAll");
   clear.textContent = t("actionClear");
   archiveButton.textContent = t("actionArchive");
@@ -185,6 +206,7 @@ function renderState(state: ExtensionState): void {
   clear.disabled = !enabled || state.selectedCount === 0;
   archiveButton.disabled = !enabled || state.selectedCount === 0;
   deleteButton.disabled = !enabled || state.selectedCount === 0;
+  cleanupModeToggle.disabled = state.isDeleting;
   sidebarPanelToggle.disabled = state.isDeleting;
   speedModeToggle.disabled = state.isDeleting;
   speedVisibleMessages.disabled = state.isDeleting;
@@ -194,7 +216,9 @@ function renderState(state: ExtensionState): void {
 
 function renderUnavailable(): void {
   currentState = null;
-  bulkMode.checked = false;
+  extensionEnabled.checked = false;
+  extensionEnabled.disabled = true;
+  cleanupModeToggle.setAttribute("aria-checked", String(FIRST_RUN_DEFAULTS.bulkMode));
   statusText.textContent = t("popupStatusOpenChatGpt");
   visibleCount.textContent = "0";
   selectedCount.textContent = "0";
@@ -217,6 +241,7 @@ function renderUnavailable(): void {
   clear.disabled = true;
   archiveButton.disabled = true;
   deleteButton.disabled = true;
+  cleanupModeToggle.disabled = true;
   sidebarPanelToggle.disabled = true;
   speedModeToggle.disabled = true;
   speedVisibleMessages.disabled = true;
@@ -225,13 +250,15 @@ function renderUnavailable(): void {
 }
 
 function setBusy(isBusy: boolean): void {
-  bulkMode.disabled = isBusy;
+  extensionEnabled.disabled = isBusy;
   const state = currentState;
-  const canUseActions = Boolean(state?.bulkMode) && !state?.isDeleting && !isBusy;
+  const canUseActions =
+    Boolean(state?.extensionEnabled) && Boolean(state?.bulkMode) && !state?.isDeleting && !isBusy;
   selectAll.disabled = !canUseActions || (state?.visibleCount ?? 0) === 0;
   clear.disabled = !canUseActions || (state?.selectedCount ?? 0) === 0;
   archiveButton.disabled = !canUseActions || (state?.selectedCount ?? 0) === 0;
   deleteButton.disabled = !canUseActions || (state?.selectedCount ?? 0) === 0;
+  cleanupModeToggle.disabled = isBusy || !state;
   sidebarPanelToggle.disabled = isBusy || !state;
   speedModeToggle.disabled = isBusy || !state;
   speedVisibleMessages.disabled = isBusy || !state;
@@ -250,12 +277,17 @@ function applyStaticCopy(): void {
   document.documentElement.lang = currentLanguage;
   document.title = t("extensionName");
   appHeading.textContent = t("popupHeading");
-  bulkModeSwitch.title = t("popupToggleTitle");
+  extensionEnabledSwitch.title = t("popupMasterToggleTitle");
+  extensionEnabled.setAttribute("aria-label", t("popupMasterToggleTitle"));
   languageToggle.textContent = nextLanguage.toUpperCase();
   languageToggle.title = t("languageToggleAria", { language: nextLanguageName });
   languageToggle.setAttribute("aria-label", t("languageToggleAria", { language: nextLanguageName }));
   statusLabel.textContent = t("popupStatusLabel");
   statusText.textContent = t("popupConnecting");
+  cleanupModeLabel.textContent = t("popupCleanupModeLabel");
+  cleanupModeHint.textContent = t("popupCleanupModeHint");
+  cleanupModeToggle.title = t("popupCleanupModeAria");
+  cleanupModeToggle.setAttribute("aria-label", t("popupCleanupModeAria"));
   visibleLabel.textContent = t("popupVisibleLabel");
   selectedLabel.textContent = t("popupSelectedLabel");
   bulkActions.setAttribute("aria-label", t("popupBulkActionsAria"));

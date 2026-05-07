@@ -12,7 +12,7 @@ const EN_MESSAGES = {
       "A safer bulk selection layer for archiving or deleting ChatGPT conversations from the sidebar."
   },
   popupHeading: { message: "Cleaner" },
-  popupToggleTitle: { message: "Toggle bulk selection mode" },
+  popupMasterToggleTitle: { message: "Turn Conversation Cleaner on or off" },
   popupBulkActionsAria: { message: "Bulk actions" },
   popupStatusLabel: { message: "Status" },
   popupVisibleLabel: { message: "Visible" },
@@ -21,8 +21,12 @@ const EN_MESSAGES = {
   popupStatusWorking: { message: "Working" },
   popupStatusOn: { message: "Bulk mode on" },
   popupStatusOff: { message: "Bulk mode off" },
+  popupStatusReady: { message: "Ready" },
+  popupStatusMasterOff: { message: "Extension off" },
   popupStatusOpenChatGpt: { message: "Open ChatGPT" },
   popupHintReady: { message: "The checkbox lane is rendered directly on the ChatGPT sidebar." },
+  popupHintCleanupOff: { message: "Turn on Cleanup mode to select sidebar conversations." },
+  popupHintDisabled: { message: "The extension is off. Turn on the top switch to use cleanup or speed mode." },
   popupHintNoRows: { message: "No visible sidebar conversations were detected on this page." },
   popupHintUnavailable: {
     message: "Open chatgpt.com, then reopen this popup to control Bulk mode."
@@ -30,6 +34,9 @@ const EN_MESSAGES = {
   popupHintInitial: {
     message: "Open ChatGPT and turn on Bulk mode to show the sidebar checkbox lane."
   },
+  popupCleanupModeLabel: { message: "Cleanup mode" },
+  popupCleanupModeHint: { message: "Enable sidebar selection and cleanup actions." },
+  popupCleanupModeAria: { message: "Cleanup mode" },
   popupSidebarPanelLabel: { message: "Sidebar panel" },
   popupSidebarPanelHint: { message: "Show bulk controls inside ChatGPT's sidebar." },
   popupSidebarPanelAria: { message: "Show sidebar bulk controls" },
@@ -65,7 +72,7 @@ const KO_MESSAGES: Record<MessageKey, MessageDefinition> = {
     message: "ChatGPT 사이드바에서 대화를 더 안전하게 일괄 선택하고 보관하거나 삭제합니다."
   },
   popupHeading: { message: "정리" },
-  popupToggleTitle: { message: "일괄 선택 모드 전환" },
+  popupMasterToggleTitle: { message: "Conversation Cleaner 전체 켜기 또는 끄기" },
   popupBulkActionsAria: { message: "일괄 작업" },
   popupStatusLabel: { message: "상태" },
   popupVisibleLabel: { message: "표시됨" },
@@ -74,8 +81,12 @@ const KO_MESSAGES: Record<MessageKey, MessageDefinition> = {
   popupStatusWorking: { message: "작업 중" },
   popupStatusOn: { message: "일괄 모드 켜짐" },
   popupStatusOff: { message: "일괄 모드 꺼짐" },
+  popupStatusReady: { message: "대기 중" },
+  popupStatusMasterOff: { message: "전체 꺼짐" },
   popupStatusOpenChatGpt: { message: "ChatGPT 열기" },
   popupHintReady: { message: "체크박스 영역이 ChatGPT 사이드바에 표시됩니다." },
+  popupHintCleanupOff: { message: "정리 모드를 켜면 사이드바 대화를 선택할 수 있습니다." },
+  popupHintDisabled: { message: "확장 기능이 꺼져 있습니다. 상단 스위치를 켜면 정리/속도 모드를 사용할 수 있습니다." },
   popupHintNoRows: { message: "이 페이지에서 표시된 사이드바 대화를 찾지 못했습니다." },
   popupHintUnavailable: {
     message: "chatgpt.com을 연 다음 팝업을 다시 열어 일괄 모드를 제어하세요."
@@ -83,6 +94,9 @@ const KO_MESSAGES: Record<MessageKey, MessageDefinition> = {
   popupHintInitial: {
     message: "ChatGPT를 열고 일괄 모드를 켜면 사이드바 체크박스가 표시됩니다."
   },
+  popupCleanupModeLabel: { message: "정리 모드" },
+  popupCleanupModeHint: { message: "사이드바 선택과 정리 작업을 활성화합니다." },
+  popupCleanupModeAria: { message: "정리 모드" },
   popupSidebarPanelLabel: { message: "좌측 패널" },
   popupSidebarPanelHint: { message: "ChatGPT 사이드바 안에 일괄 컨트롤을 표시합니다." },
   popupSidebarPanelAria: { message: "좌측 일괄 컨트롤 표시" },

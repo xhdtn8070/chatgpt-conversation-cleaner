@@ -1,4 +1,5 @@
 export const STORAGE_KEYS = {
+  extensionEnabled: "gptbd.enabled",
   bulkMode: "gptbd.bulkMode",
   language: "gptbd.language",
   sidebarControls: "gptbd.sidebarControls",
@@ -8,6 +9,7 @@ export const STORAGE_KEYS = {
 } as const;
 
 export const FIRST_RUN_DEFAULTS = {
+  extensionEnabled: true,
   bulkMode: false,
   sidebarControls: true,
   speedMode: false,
@@ -17,6 +19,7 @@ export const FIRST_RUN_DEFAULTS = {
 
 export const MESSAGE_TYPES = {
   getState: "GPTBD_GET_STATE",
+  setExtensionEnabled: "GPTBD_SET_EXTENSION_ENABLED",
   setBulkMode: "GPTBD_SET_BULK_MODE",
   setLanguage: "GPTBD_SET_LANGUAGE",
   setSidebarControls: "GPTBD_SET_SIDEBAR_CONTROLS",
@@ -46,6 +49,7 @@ export type DeleteSummary = {
 
 export type ExtensionState = {
   available: boolean;
+  extensionEnabled: boolean;
   bulkMode: boolean;
   selectedCount: number;
   visibleCount: number;
@@ -60,6 +64,7 @@ export type ExtensionState = {
 
 export type ExtensionMessage =
   | { type: typeof MESSAGE_TYPES.getState }
+  | { type: typeof MESSAGE_TYPES.setExtensionEnabled; enabled: boolean }
   | { type: typeof MESSAGE_TYPES.setBulkMode; enabled: boolean }
   | { type: typeof MESSAGE_TYPES.setLanguage; language: LanguagePreference }
   | { type: typeof MESSAGE_TYPES.setSidebarControls; enabled: boolean }

@@ -11,6 +11,8 @@ declare global {
 test("popup switches between Korean and English UI", async ({ page }) => {
   await page.addInitScript(() => {
     const storage: Record<string, unknown> = {
+      "gptbd.enabled": true,
+      "gptbd.bulkMode": false,
       "gptbd.language": "ko",
       "gptbd.sidebarControls": true,
       "gptbd.speedMode": false,
@@ -52,6 +54,12 @@ test("popup switches between Korean and English UI", async ({ page }) => {
           if (message.type === "GPTBD_SET_LANGUAGE" && message.language) {
             storage["gptbd.language"] = message.language;
           }
+          if (message.type === "GPTBD_SET_EXTENSION_ENABLED") {
+            storage["gptbd.enabled"] = Boolean(message.enabled);
+          }
+          if (message.type === "GPTBD_SET_BULK_MODE") {
+            storage["gptbd.bulkMode"] = Boolean(message.enabled);
+          }
           if (message.type === "GPTBD_SET_SIDEBAR_CONTROLS") {
             storage["gptbd.sidebarControls"] = Boolean(message.enabled);
           }
@@ -65,7 +73,8 @@ test("popup switches between Korean and English UI", async ({ page }) => {
 
           return {
             available: true,
-            bulkMode: false,
+            extensionEnabled: storage["gptbd.enabled"] ?? true,
+            bulkMode: storage["gptbd.bulkMode"] ?? false,
             selectedCount: 0,
             visibleCount: 0,
             isDeleting: false,
@@ -85,6 +94,13 @@ test("popup switches between Korean and English UI", async ({ page }) => {
 
   await expect(page.getByRole("heading", { name: "정리" })).toBeVisible();
   await expect(page.getByRole("button", { name: "영어로 전환" })).toHaveText("EN");
+  await expect(
+    page.getByRole("switch", { name: "Conversation Cleaner 전체 켜기 또는 끄기" })
+  ).toBeChecked();
+  await expect(page.getByRole("switch", { name: "정리 모드" })).toHaveAttribute(
+    "aria-checked",
+    "false"
+  );
   await expect(page.getByRole("switch", { name: "좌측 일괄 컨트롤 표시" })).toHaveAttribute(
     "aria-checked",
     "true"
@@ -99,6 +115,13 @@ test("popup switches between Korean and English UI", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Cleaner" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Switch language to Korean" })).toHaveText("KO");
   await expect.poll(() => page.evaluate(() => window.__popupStorage["gptbd.language"])).toBe("en");
+
+  await page.getByRole("switch", { name: "Cleanup mode" }).click();
+  await expect(page.getByRole("switch", { name: "Cleanup mode" })).toHaveAttribute(
+    "aria-checked",
+    "true"
+  );
+  await expect.poll(() => page.evaluate(() => window.__popupStorage["gptbd.bulkMode"])).toBe(true);
 
   await page.getByRole("switch", { name: "Show sidebar bulk controls" }).click();
   await expect(page.getByRole("switch", { name: "Show sidebar bulk controls" })).toHaveAttribute(
@@ -122,4 +145,19 @@ test("popup switches between Korean and English UI", async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.__popupStorage["gptbd.speedMode"])).toBe(true);
   await expect.poll(() => page.evaluate(() => window.__popupStorage["gptbd.speedVisibleMessages"])).toBe(12);
   await expect.poll(() => page.evaluate(() => window.__popupStorage["gptbd.speedBatchMessages"])).toBe(3);
+
+  await page.getByRole("switch", { name: "Turn Conversation Cleaner on or off" }).click();
+  await expect.poll(() => page.evaluate(() => window.__popupStorage["gptbd.enabled"])).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.__popupStorage["gptbd.bulkMode"])).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.__popupStorage["gptbd.speedMode"])).toBe(true);
+  await expect(page.getByRole("switch", { name: "Cleanup mode" })).toHaveAttribute(
+    "aria-checked",
+    "true"
+  );
+  await expect(page.getByRole("switch", { name: "Speed mode for long conversations" })).toHaveAttribute(
+    "aria-checked",
+    "true"
+  );
+  await expect(page.getByRole("region", { name: "Speed mode settings" })).toBeVisible();
+  await expect(page.getByText("Extension off")).toBeVisible();
 });

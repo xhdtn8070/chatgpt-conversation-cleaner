@@ -21,6 +21,7 @@ import { DOCUMENT_CSS, SHADOW_CSS } from "./styles";
 const ROOT_ID = "gptbd-root";
 const DOCUMENT_STYLE_ID = "gptbd-document-style";
 const STORAGE_KEYS = {
+  extensionEnabled: "gptbd.enabled",
   bulkMode: "gptbd.bulkMode",
   language: "gptbd.language",
   sidebarControls: "gptbd.sidebarControls",
@@ -29,6 +30,7 @@ const STORAGE_KEYS = {
   speedBatchMessages: "gptbd.speedBatchMessages"
 } as const;
 const FIRST_RUN_DEFAULTS = {
+  extensionEnabled: true,
   bulkMode: false,
   sidebarControls: true,
   speedMode: false,
@@ -37,6 +39,7 @@ const FIRST_RUN_DEFAULTS = {
 } as const;
 const MESSAGE_TYPES = {
   getState: "GPTBD_GET_STATE",
+  setExtensionEnabled: "GPTBD_SET_EXTENSION_ENABLED",
   setBulkMode: "GPTBD_SET_BULK_MODE",
   setLanguage: "GPTBD_SET_LANGUAGE",
   setSidebarControls: "GPTBD_SET_SIDEBAR_CONTROLS",
@@ -114,6 +117,7 @@ declare global {
 }
 
 class BulkDeleteController {
+  private extensionEnabled = true;
   private bulkMode = false;
   private language: LanguageCode = getDefaultLanguage();
   private sidebarControls = true;
@@ -214,6 +218,10 @@ class BulkDeleteController {
   }
 
   async init(): Promise<void> {
+    this.extensionEnabled = await storageGet(
+      STORAGE_KEYS.extensionEnabled,
+      FIRST_RUN_DEFAULTS.extensionEnabled
+    );
     this.bulkMode = await storageGet(STORAGE_KEYS.bulkMode, FIRST_RUN_DEFAULTS.bulkMode);
     this.language = normalizeLanguage(await storageGet(STORAGE_KEYS.language, this.language));
     this.sidebarControls = await storageGet(
@@ -237,7 +245,7 @@ class BulkDeleteController {
     };
     setActiveLanguage(this.language);
     this.syncStaticI18n();
-    this.speedControls.init(this.speedMode, this.language, this.speedSettings);
+    this.speedControls.init(this.extensionEnabled && this.speedMode, this.language, this.speedSettings);
     this.bindRuntimeMessages();
     this.bindPageListeners();
     this.observer.observe(document.body, { childList: true, subtree: true });
@@ -248,6 +256,7 @@ class BulkDeleteController {
   getState(): ExtensionState {
     return {
       available: true,
+      extensionEnabled: this.extensionEnabled,
       bulkMode: this.bulkMode,
       selectedCount: this.selectedIds.size,
       visibleCount: this.rows.size,
@@ -259,6 +268,21 @@ class BulkDeleteController {
       speedBatchMessages: this.speedSettings.batchMessages,
       lastDeleteSummary: this.lastDeleteSummary
     };
+  }
+
+  async setExtensionEnabled(enabled: boolean): Promise<ExtensionState> {
+    if (this.extensionEnabled === enabled) {
+      return this.getState();
+    }
+
+    this.extensionEnabled = enabled;
+    void storageSet(STORAGE_KEYS.extensionEnabled, enabled);
+    await this.speedControls.setEnabled(enabled && this.speedMode);
+
+    this.syncToolbarSpacer();
+    this.refreshRows();
+    this.render({ recollectOnSpacerChange: false });
+    return this.getState();
   }
 
   async setBulkMode(enabled: boolean): Promise<ExtensionState> {
@@ -302,7 +326,7 @@ class BulkDeleteController {
 
     this.speedMode = enabled;
     void storageSet(STORAGE_KEYS.speedMode, enabled);
-    await this.speedControls.setEnabled(enabled);
+    await this.speedControls.setEnabled(this.extensionEnabled && enabled);
     return this.getState();
   }
 
@@ -318,6 +342,10 @@ class BulkDeleteController {
   }
 
   selectAllVisible(): ExtensionState {
+    if (!this.extensionEnabled || !this.bulkMode) {
+      return this.getState();
+    }
+
     this.selectedIds = selectAll(this.selectableRows().map((row) => row.id));
     this.render();
     return this.getState();
@@ -339,7 +367,7 @@ class BulkDeleteController {
   }
 
   requestActionSelected(action: BulkConversationAction): ExtensionState {
-    if (this.selectedIds.size > 0 && !this.isDeleting) {
+    if (this.extensionEnabled && this.bulkMode && this.selectedIds.size > 0 && !this.isDeleting) {
       const pinnedRow = Array.from(this.selectedIds)
         .map((id) => this.rows.get(id))
         .find((row) => row?.isPinned);
@@ -366,6 +394,7 @@ class BulkDeleteController {
         .catch((error: unknown) => {
           sendResponse({
             available: true,
+            extensionEnabled: this.extensionEnabled,
             bulkMode: this.bulkMode,
             selectedCount: this.selectedIds.size,
             visibleCount: this.rows.size,
@@ -388,6 +417,8 @@ class BulkDeleteController {
       case MESSAGE_TYPES.getState:
         this.refresh();
         return this.getState();
+      case MESSAGE_TYPES.setExtensionEnabled:
+        return this.setExtensionEnabled(message.enabled);
       case MESSAGE_TYPES.setBulkMode:
         return this.setBulkMode(message.enabled);
       case MESSAGE_TYPES.setLanguage:
@@ -446,8 +477,8 @@ class BulkDeleteController {
 
   private render(options: { recollectOnSpacerChange?: boolean } = {}): void {
     const recollectOnSpacerChange = options.recollectOnSpacerChange ?? true;
-    document.documentElement.classList.toggle("gptbd-bulk-active", this.bulkMode);
-    this.host.toggleAttribute("data-active", this.bulkMode);
+    document.documentElement.classList.toggle("gptbd-bulk-active", this.extensionEnabled && this.bulkMode);
+    this.host.toggleAttribute("data-active", this.extensionEnabled && this.bulkMode);
     this.clearRowHighlights();
     this.applyRowHighlights();
     if (this.syncToolbarSpacer() && recollectOnSpacerChange) {
@@ -465,7 +496,7 @@ class BulkDeleteController {
   private renderSelectionLayer(): void {
     this.checkboxLayer.replaceChildren();
 
-    if (!this.bulkMode || this.isDeleting) {
+    if (!this.extensionEnabled || !this.bulkMode || this.isDeleting) {
       return;
     }
 
@@ -554,9 +585,10 @@ class BulkDeleteController {
   private renderActionBar(): void {
     this.actionBar.className = "action-bar";
     this.actionBar.dataset.mode = this.bulkMode ? "on" : "off";
-    this.actionBar.hidden = !this.sidebarControls || !this.toolbarSpacer.isConnected;
+    this.actionBar.hidden =
+      !this.extensionEnabled || !this.sidebarControls || !this.toolbarSpacer.isConnected;
 
-    if (!this.sidebarControls || !this.toolbarSpacer.isConnected) {
+    if (!this.extensionEnabled || !this.sidebarControls || !this.toolbarSpacer.isConnected) {
       this.actionBar.replaceChildren();
       this.actionBar.removeAttribute("style");
       return;
@@ -651,7 +683,7 @@ class BulkDeleteController {
     let changed = false;
     const anchor = this.findHistoryHeader();
 
-    if (!anchor || !this.sidebarControls) {
+    if (!this.extensionEnabled || !anchor || !this.sidebarControls) {
       changed = this.toolbarSpacer.isConnected;
       this.toolbarSpacer.remove();
       return changed;

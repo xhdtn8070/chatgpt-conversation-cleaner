@@ -43,6 +43,7 @@ test("content script uses first-run defaults from browser language", async ({ pa
   await page.addScriptTag({ path: resolve("dist/assets/content.js") });
   await page.waitForSelector("html[data-gptbd-ready='true']");
 
+  await expect.poll(() => page.evaluate(() => window.__gptbdController?.getState().extensionEnabled)).toBe(true);
   await expect.poll(() => page.evaluate(() => window.__gptbdController?.getState().bulkMode)).toBe(false);
   await expect.poll(() => page.evaluate(() => window.__gptbdController?.getState().language)).toBe("ko");
   await expect.poll(() => page.evaluate(() => window.__gptbdController?.getState().sidebarControls)).toBe(true);

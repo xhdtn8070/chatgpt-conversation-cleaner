@@ -58,7 +58,7 @@ The goal is a calmer cleanup flow:
 
 Conversation Cleaner avoids fixed-position clicking. It resolves the selected conversation row, opens only that row's menu when fallback is needed, then scopes follow-up clicks to the visible ChatGPT menu or confirmation dialog.
 
-First-run defaults are conservative: language follows the browser, Bulk mode starts off, Speed mode starts off, and the optional sidebar control panel starts on.
+First-run defaults are conservative: language follows the browser, the master extension switch starts on, Cleanup mode starts off, Speed mode starts off, and the optional sidebar control panel starts on. The master switch acts as a runtime filter: turning it off disables cleanup and speed behavior without erasing the individual switch settings.
 
 The action order is:
 
