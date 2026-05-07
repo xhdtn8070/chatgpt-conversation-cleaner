@@ -161,6 +161,15 @@ test("content script uses ChatGPT API before scoped UI fallback", async ({ page 
         });
       }
 
+      if (url.includes("/backend-api/conversation/alpha")) {
+        window.__apiCalls.push(`${init?.method ?? "GET"} ${url} ${String(init?.body ?? "")}`);
+        document.getElementById("row-alpha")?.remove();
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { "Content-Type": "application/json" },
+          status: 200
+        });
+      }
+
       if (url.includes("/backend-api/conversation/beta")) {
         window.__apiCalls.push(`${init?.method ?? "GET"} ${url} ${String(init?.body ?? "")}`);
         document.getElementById("row-beta")?.remove();
@@ -198,6 +207,16 @@ test("content script uses ChatGPT API before scoped UI fallback", async ({ page 
   await page.goto(pathToFileURL(resolve("fixtures/sidebar.html")).toString());
   await page.addScriptTag({ path: resolve("dist/assets/content.js") });
   await page.waitForSelector("html[data-gptbd-ready='true']");
+
+  await page.getByRole("checkbox", { name: /select alpha planning thread/i }).click();
+  await page.getByRole("button", { name: "Archive" }).click();
+  await page.locator("#gptbd-root .dialog").getByRole("button", { name: "Archive" }).click();
+
+  await expect(page.getByRole("link", { name: "Alpha planning thread" })).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => window.__menuOpened)).toBe(false);
+  await expect
+    .poll(() => page.evaluate(() => window.__apiCalls.some((call) => call.includes('"is_archived":true'))))
+    .toBe(true);
 
   await page.getByRole("checkbox", { name: /select beta release notes/i }).click();
   await page.getByRole("button", { name: "Delete" }).click();
