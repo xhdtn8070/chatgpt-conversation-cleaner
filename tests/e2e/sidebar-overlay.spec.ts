@@ -44,6 +44,14 @@ test("content script renders stable checkbox overlay and isolates row clicks", a
   await expect(page.locator("#row-alpha a")).toHaveCSS("padding-left", "44px");
 
   const actionBar = page.locator("#gptbd-root .action-bar");
+  const modeSwitch = page.getByRole("switch", { name: "Bulk delete mode" });
+  await expect(modeSwitch).toHaveText("On");
+  await modeSwitch.click();
+  await expect(page.getByText("Bulk delete off", { exact: true })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: /select alpha planning thread/i })).toHaveCount(0);
+  await modeSwitch.click();
+  await expect(alphaCheckbox).toBeVisible();
+
   const actionBarBox = await actionBar.boundingBox();
   const recentBox = await page.getByText("Recent", { exact: true }).boundingBox();
   const sidebarBox = await page.locator("nav").boundingBox();
@@ -63,18 +71,20 @@ test("content script renders stable checkbox overlay and isolates row clicks", a
   expect(box?.width).toBe(32);
   expect(box?.height).toBe(32);
 
-  await page.getByRole("link", { name: /beta release notes/i }).click();
+  const betaLinkBox = await page.getByRole("link", { name: /beta release notes/i }).boundingBox();
+  expect(betaLinkBox).not.toBeNull();
+  await page.mouse.click(betaLinkBox!.x + Math.min(80, betaLinkBox!.width / 2), betaLinkBox!.y + betaLinkBox!.height / 2);
   await expect(page.locator("#row-beta")).toHaveAttribute("data-gptbd-row-selected", "true");
   await expect(page.getByText("2 selected")).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.__navigated)).toBe(false);
 
-  await page.getByRole("link", { name: /gamma qa checklist/i }).dispatchEvent("pointerdown", {
-    button: 0
-  });
+  const gammaLinkBox = await page.getByRole("link", { name: /gamma qa checklist/i }).boundingBox();
+  expect(gammaLinkBox).not.toBeNull();
+  await page.mouse.click(
+    gammaLinkBox!.x + Math.min(80, gammaLinkBox!.width / 2),
+    gammaLinkBox!.y + gammaLinkBox!.height / 2
+  );
   await expect(page.locator("#row-gamma")).toHaveAttribute("data-gptbd-row-selected", "true");
-  await page.getByRole("link", { name: /gamma qa checklist/i }).dispatchEvent("click", {
-    button: 0
-  });
   await expect.poll(() => page.evaluate(() => window.__navigated)).toBe(false);
   await expect(page.getByText("Deselect all", { exact: true })).toBeVisible();
 

@@ -16,6 +16,7 @@ export const SHADOW_CSS = `
   position: fixed;
   display: grid;
   place-items: center;
+  z-index: 2;
   border: 0;
   border-radius: 8px;
   background: transparent;
@@ -23,6 +24,20 @@ export const SHADOW_CSS = `
   cursor: pointer;
   pointer-events: auto;
   transition: background-color 120ms ease, transform 120ms ease;
+}
+
+.row-hit-target {
+  position: fixed;
+  z-index: 1;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.row-hit-target:hover {
+  background: color-mix(in srgb, CanvasText 7%, transparent);
 }
 
 .checkbox-target:hover {
@@ -62,11 +77,9 @@ export const SHADOW_CSS = `
 
 .action-bar {
   position: fixed;
-  display: flex;
-  align-items: center;
+  display: grid;
   gap: 6px;
-  min-height: 38px;
-  padding: 4px;
+  padding: 6px;
   box-sizing: border-box;
   border: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
   border-radius: 8px;
@@ -75,9 +88,34 @@ export const SHADOW_CSS = `
   pointer-events: auto;
 }
 
+.action-bar[data-mode="off"] {
+  grid-template-rows: 1fr;
+  min-height: 36px;
+}
+
+.action-bar[data-mode="on"] {
+  grid-template-rows: auto auto;
+  min-height: 78px;
+}
+
+.toolbar-top {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.toolbar-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.85fr) minmax(0, 0.9fr);
+  gap: 6px;
+  min-width: 0;
+}
+
 .selected-count {
   flex: 1 1 auto;
-  min-width: 64px;
+  min-width: 0;
   color: CanvasText;
   font: 600 12px/1.2 ui-sans-serif, system-ui, sans-serif;
   overflow: hidden;
@@ -88,6 +126,7 @@ export const SHADOW_CSS = `
 .action-bar button,
 .dialog button {
   flex: 0 0 auto;
+  min-width: 0;
   min-height: 28px;
   border: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
   border-radius: 7px;
@@ -96,7 +135,19 @@ export const SHADOW_CSS = `
   cursor: pointer;
   font: 600 12px/1 ui-sans-serif, system-ui, sans-serif;
   padding: 0 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.mode-toggle {
+  min-width: 50px !important;
+  border-radius: 999px !important;
+}
+
+.mode-toggle[aria-checked="true"] {
+  border-color: #0f7a55 !important;
+  background: color-mix(in srgb, #0f7a55 22%, Canvas) !important;
 }
 
 .action-bar button:hover,
@@ -183,12 +234,21 @@ html.gptbd-bulk-active [data-gptbd-row-selected="true"] a {
 
 [data-gptbd-toolbar-spacer="true"] {
   display: block !important;
-  flex: 0 0 46px !important;
   width: 100% !important;
-  height: 46px !important;
-  min-height: 46px !important;
   margin: 0 !important;
   padding: 0 !important;
   pointer-events: none !important;
+}
+
+[data-gptbd-toolbar-spacer="true"][data-gptbd-mode="off"] {
+  flex: 0 0 44px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+}
+
+[data-gptbd-toolbar-spacer="true"][data-gptbd-mode="on"] {
+  flex: 0 0 86px !important;
+  height: 86px !important;
+  min-height: 86px !important;
 }
 `;

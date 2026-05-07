@@ -61,9 +61,7 @@ class BulkDeleteController {
 
     event.preventDefault();
     event.stopImmediatePropagation();
-    this.selectedIds = toggleSelection(this.selectedIds, row.id);
-    this.lastDeleteSummary = undefined;
-    this.render();
+    this.toggleRowSelection(row.id, true);
   };
   private handleBulkRowMouseDown = (event: MouseEvent): void => {
     if (!this.bulkMode || this.isDeleting || event.button !== 0) {
@@ -233,55 +231,93 @@ class BulkDeleteController {
     this.host.toggleAttribute("data-active", this.bulkMode);
     this.clearRowHighlights();
     this.applyRowHighlights();
-    this.renderCheckboxes();
-    this.syncToolbarSpacer();
+    if (this.syncToolbarSpacer()) {
+      this.clearRowHighlights();
+      const nextRows = collectConversationRows();
+      this.rows = new Map(nextRows.map((row) => [row.id, row]));
+      this.applyRowHighlights();
+    }
+    this.renderSelectionLayer();
     this.renderActionBar();
     this.renderNoticePosition();
   }
 
-  private renderCheckboxes(): void {
+  private renderSelectionLayer(): void {
     this.checkboxLayer.replaceChildren();
 
-    if (!this.bulkMode) {
+    if (!this.bulkMode || this.isDeleting) {
       return;
     }
 
     for (const row of this.rows.values()) {
-      const layout = computeCheckboxLayout(row.rect, row.sidebarRect);
-      const button = document.createElement("button");
-      const selected = this.selectedIds.has(row.id);
-      button.type = "button";
-      button.className = "checkbox-target";
-      button.setAttribute("role", "checkbox");
-      button.setAttribute("aria-checked", String(selected));
-      button.setAttribute("aria-label", `Select ${row.title}`);
-      button.style.left = `${layout.left}px`;
-      button.style.top = `${layout.top}px`;
-      button.style.width = `${layout.size}px`;
-      button.style.height = `${layout.size}px`;
-      button.style.setProperty("--gptbd-visible-size", `${layout.visibleSize}px`);
-
-      const visual = document.createElement("span");
-      visual.className = "checkbox-visual";
-      button.append(visual);
-
-      button.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        this.selectedIds = toggleSelection(this.selectedIds, row.id);
-        this.lastDeleteSummary = undefined;
-        this.render();
-      });
-
-      this.checkboxLayer.append(button);
+      this.checkboxLayer.append(this.createRowHitTarget(row));
     }
+
+    for (const row of this.rows.values()) {
+      this.checkboxLayer.append(this.createCheckboxTarget(row));
+    }
+  }
+
+  private createRowHitTarget(row: ConversationRow): HTMLButtonElement {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "row-hit-target";
+    button.setAttribute("aria-label", `Toggle ${row.title}`);
+    button.style.left = `${Math.max(row.sidebarRect.left, row.rect.left)}px`;
+    button.style.top = `${row.rect.top}px`;
+    button.style.width = `${Math.max(0, Math.min(row.rect.right, row.sidebarRect.right) - Math.max(row.sidebarRect.left, row.rect.left))}px`;
+    button.style.height = `${row.rect.height}px`;
+
+    button.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      this.toggleRowSelection(row.id, true);
+    });
+
+    button.addEventListener("mousedown", stopSelectionEvent);
+    button.addEventListener("click", stopSelectionEvent);
+
+    return button;
+  }
+
+  private createCheckboxTarget(row: ConversationRow): HTMLButtonElement {
+    const layout = computeCheckboxLayout(row.rect, row.sidebarRect);
+    const button = document.createElement("button");
+    const selected = this.selectedIds.has(row.id);
+    button.type = "button";
+    button.className = "checkbox-target";
+    button.setAttribute("role", "checkbox");
+    button.setAttribute("aria-checked", String(selected));
+    button.setAttribute("aria-label", `Select ${row.title}`);
+    button.style.left = `${layout.left}px`;
+    button.style.top = `${layout.top}px`;
+    button.style.width = `${layout.size}px`;
+    button.style.height = `${layout.size}px`;
+    button.style.setProperty("--gptbd-visible-size", `${layout.visibleSize}px`);
+
+    const visual = document.createElement("span");
+    visual.className = "checkbox-visual";
+    button.append(visual);
+
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.toggleRowSelection(row.id);
+    });
+
+    return button;
   }
 
   private renderActionBar(): void {
     this.actionBar.className = "action-bar";
-    this.actionBar.hidden = !this.bulkMode;
+    this.actionBar.dataset.mode = this.bulkMode ? "on" : "off";
+    this.actionBar.hidden = !this.toolbarSpacer.isConnected;
 
-    if (!this.bulkMode) {
+    if (!this.toolbarSpacer.isConnected) {
       this.actionBar.replaceChildren();
       this.actionBar.removeAttribute("style");
       return;
@@ -298,9 +334,30 @@ class BulkDeleteController {
     this.actionBar.style.bottom = "auto";
     this.actionBar.style.width = `${Math.min(computeActionBarWidth(sidebarRect), availableWidth)}px`;
 
+    const topRow = document.createElement("div");
+    topRow.className = "toolbar-top";
+
     const count = document.createElement("span");
     count.className = "selected-count";
-    count.textContent = `${this.selectedIds.size} selected`;
+    count.textContent = this.bulkMode ? `${this.selectedIds.size} selected` : "Bulk delete off";
+
+    const toggleButton = createActionButton(this.bulkMode ? "On" : "Off", () => {
+      void this.setBulkMode(!this.bulkMode);
+    });
+    toggleButton.className = "mode-toggle";
+    toggleButton.setAttribute("role", "switch");
+    toggleButton.setAttribute("aria-checked", String(this.bulkMode));
+    toggleButton.setAttribute("aria-label", "Bulk delete mode");
+
+    topRow.append(count, toggleButton);
+
+    if (!this.bulkMode) {
+      this.actionBar.replaceChildren(topRow);
+      return;
+    }
+
+    const actionsRow = document.createElement("div");
+    actionsRow.className = "toolbar-actions";
 
     const allVisibleSelected = this.rows.size > 0 && this.selectedIds.size === this.rows.size;
     const selectAllButton = createActionButton(allVisibleSelected ? "Deselect all" : "Select all", () => {
@@ -324,30 +381,36 @@ class BulkDeleteController {
     deleteButton.className = "danger";
     deleteButton.disabled = this.selectedIds.size === 0 || this.isDeleting;
 
-    this.actionBar.replaceChildren(count, selectAllButton, clearButton, deleteButton);
+    actionsRow.append(selectAllButton, clearButton, deleteButton);
+    this.actionBar.replaceChildren(topRow, actionsRow);
   }
 
-  private syncToolbarSpacer(): void {
-    if (!this.bulkMode) {
-      this.toolbarSpacer.remove();
-      return;
-    }
-
+  private syncToolbarSpacer(): boolean {
+    let changed = false;
     const anchor = this.findHistoryHeader();
 
     if (!anchor) {
+      changed = this.toolbarSpacer.isConnected;
       this.toolbarSpacer.remove();
-      return;
+      return changed;
     }
+
+    if (this.toolbarSpacer.dataset.gptbdMode !== (this.bulkMode ? "on" : "off")) {
+      changed = true;
+    }
+    this.toolbarSpacer.dataset.gptbdMode = this.bulkMode ? "on" : "off";
 
     if (this.toolbarSpacer.parentElement !== anchor.parentElement) {
       anchor.after(this.toolbarSpacer);
-      return;
+      return true;
     }
 
     if (this.toolbarSpacer.previousElementSibling !== anchor) {
       anchor.after(this.toolbarSpacer);
+      return true;
     }
+
+    return changed;
   }
 
   private showDeleteDialog(): void {
@@ -559,7 +622,7 @@ class BulkDeleteController {
 
   private getActionBarTop(sidebarRect: DOMRect, toolbarRect: DOMRect | null): number {
     if (toolbarRect && toolbarRect.height > 0) {
-      return Math.round(toolbarRect.top + Math.max(4, (toolbarRect.height - 38) / 2));
+      return Math.round(toolbarRect.top + 4);
     }
 
     const firstRow = this.rows.values().next().value;
@@ -596,6 +659,20 @@ class BulkDeleteController {
     this.notice.style.left = `${Math.max(sidebarRect.left + 8, 8)}px`;
     this.notice.style.bottom = "12px";
     this.notice.style.width = `${computeActionBarWidth(sidebarRect)}px`;
+  }
+
+  private toggleRowSelection(id: string, deferRender = false): void {
+    this.selectedIds = toggleSelection(this.selectedIds, id);
+    this.lastDeleteSummary = undefined;
+
+    if (deferRender) {
+      this.clearRowHighlights();
+      this.applyRowHighlights();
+      window.requestAnimationFrame(() => this.render());
+      return;
+    }
+
+    this.render();
   }
 }
 
@@ -744,6 +821,11 @@ function createActionButton(label: string, onClick: () => void): HTMLButtonEleme
     onClick();
   });
   return button;
+}
+
+function stopSelectionEvent(event: Event): void {
+  event.preventDefault();
+  event.stopPropagation();
 }
 
 function createStyle(css: string): HTMLStyleElement {
