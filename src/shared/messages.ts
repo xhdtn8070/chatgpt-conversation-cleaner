@@ -7,6 +7,7 @@ export const MESSAGE_TYPES = {
   setBulkMode: "GPTBD_SET_BULK_MODE",
   selectAllVisible: "GPTBD_SELECT_ALL_VISIBLE",
   clearSelection: "GPTBD_CLEAR_SELECTION",
+  archiveSelected: "GPTBD_ARCHIVE_SELECTED",
   deleteSelected: "GPTBD_DELETE_SELECTED"
 } as const;
 
@@ -38,4 +39,5 @@ export type ExtensionMessage =
   | { type: typeof MESSAGE_TYPES.setBulkMode; enabled: boolean }
   | { type: typeof MESSAGE_TYPES.selectAllVisible }
   | { type: typeof MESSAGE_TYPES.clearSelection }
+  | { type: typeof MESSAGE_TYPES.archiveSelected }
   | { type: typeof MESSAGE_TYPES.deleteSelected };

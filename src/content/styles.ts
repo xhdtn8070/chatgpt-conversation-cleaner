@@ -108,7 +108,9 @@ export const SHADOW_CSS = `
 
 .toolbar-actions {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.85fr) minmax(0, 0.9fr);
+  grid-template-columns:
+    minmax(0, 0.6fr) minmax(0, 0.85fr)
+    minmax(0, 1.15fr) minmax(0, 1fr);
   gap: 6px;
   min-width: 0;
 }

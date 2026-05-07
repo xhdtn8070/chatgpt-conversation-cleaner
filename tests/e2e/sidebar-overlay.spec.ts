@@ -86,11 +86,54 @@ test("content script renders stable checkbox overlay and isolates row clicks", a
   );
   await expect(page.locator("#row-gamma")).toHaveAttribute("data-gptbd-row-selected", "true");
   await expect.poll(() => page.evaluate(() => window.__navigated)).toBe(false);
-  await expect(page.getByText("Deselect all", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Deselect all" })).toHaveText("None");
 
-  await page.getByText("Deselect all", { exact: true }).click();
+  await page.getByRole("button", { name: "Deselect all" }).click();
   await expect(page.getByText("0 selected", { exact: true })).toBeVisible();
 
-  await page.getByText("Select all", { exact: true }).click();
-  await expect(page.getByText("Deselect all", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Select all" }).click();
+  await expect(page.getByRole("button", { name: "Deselect all" })).toHaveText("None");
+});
+
+test("content script applies archive and delete through visible ChatGPT menu controls", async ({
+  page
+}) => {
+  await page.addInitScript(() => {
+    const storage: Record<string, unknown> = { "gptbd.bulkMode": true };
+
+    window.chrome = {
+      storage: {
+        local: {
+          get(key: string, callback: (items: Record<string, unknown>) => void) {
+            callback({ [key]: storage[key] });
+          },
+          set(items: Record<string, unknown>, callback?: () => void) {
+            Object.assign(storage, items);
+            callback?.();
+          }
+        }
+      },
+      runtime: {
+        onMessage: {
+          addListener() {
+            return undefined;
+          }
+        }
+      }
+    } as unknown as typeof chrome;
+  });
+
+  await page.goto(pathToFileURL(resolve("fixtures/sidebar.html")).toString());
+  await page.addScriptTag({ path: resolve("dist/assets/content.js") });
+  await page.waitForSelector("html[data-gptbd-ready='true']");
+
+  await page.getByRole("checkbox", { name: /select alpha planning thread/i }).click();
+  await page.getByRole("button", { name: "Archive" }).click();
+  await page.locator("#gptbd-root .dialog").getByRole("button", { name: "Archive" }).click();
+  await expect(page.getByRole("link", { name: "Alpha planning thread" })).toHaveCount(0);
+
+  await page.getByRole("checkbox", { name: /select beta release notes/i }).click();
+  await page.getByRole("button", { name: "Delete" }).click();
+  await page.locator("#gptbd-root .dialog").getByRole("button", { name: "Delete" }).click();
+  await expect(page.getByRole("link", { name: /beta release notes/i })).toHaveCount(0);
 });

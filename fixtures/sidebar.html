@@ -103,10 +103,86 @@
     </main>
     <script>
       window.__navigated = false;
+      let activeMenu = null;
+
       for (const anchor of document.querySelectorAll("a")) {
         anchor.addEventListener("click", (event) => {
           event.preventDefault();
           window.__navigated = true;
+        });
+      }
+
+      function closeMenu() {
+        activeMenu?.remove();
+        activeMenu = null;
+      }
+
+      function removeRow(button) {
+        button.closest("li")?.remove();
+        closeMenu();
+      }
+
+      for (const button of document.querySelectorAll("button.more")) {
+        button.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          closeMenu();
+
+          const rect = button.getBoundingClientRect();
+          const menu = document.createElement("div");
+          menu.setAttribute("role", "menu");
+          menu.style.position = "fixed";
+          menu.style.left = `${rect.left - 120}px`;
+          menu.style.top = `${rect.bottom + 4}px`;
+          menu.style.display = "grid";
+          menu.style.gap = "4px";
+          menu.style.padding = "6px";
+          menu.style.border = "1px solid rgba(128,128,128,.35)";
+          menu.style.borderRadius = "8px";
+          menu.style.background = "Canvas";
+          menu.style.color = "CanvasText";
+          menu.style.zIndex = "1000";
+
+          const archive = document.createElement("button");
+          archive.type = "button";
+          archive.setAttribute("role", "menuitem");
+          archive.textContent = "Archive";
+          archive.addEventListener("click", () => removeRow(button));
+
+          const del = document.createElement("button");
+          del.type = "button";
+          del.setAttribute("role", "menuitem");
+          del.textContent = "Delete";
+          del.addEventListener("click", () => {
+            closeMenu();
+            const dialog = document.createElement("section");
+            dialog.setAttribute("role", "dialog");
+            dialog.style.position = "fixed";
+            dialog.style.left = "360px";
+            dialog.style.top = "120px";
+            dialog.style.padding = "16px";
+            dialog.style.border = "1px solid rgba(128,128,128,.35)";
+            dialog.style.borderRadius = "8px";
+            dialog.style.background = "Canvas";
+            dialog.style.color = "CanvasText";
+            dialog.style.zIndex = "1000";
+            dialog.innerHTML = "<h2>Confirm delete</h2>";
+
+            const confirm = document.createElement("button");
+            confirm.type = "button";
+            confirm.textContent = "Delete";
+            confirm.addEventListener("click", () => {
+              removeRow(button);
+              dialog.remove();
+            });
+
+            dialog.append(confirm);
+            document.body.append(dialog);
+          });
+
+          menu.append(archive, del);
+          document.body.append(menu);
+          activeMenu = menu;
         });
       }
     </script>

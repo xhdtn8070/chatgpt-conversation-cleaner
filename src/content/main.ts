@@ -19,10 +19,47 @@ const MESSAGE_TYPES = {
   setBulkMode: "GPTBD_SET_BULK_MODE",
   selectAllVisible: "GPTBD_SELECT_ALL_VISIBLE",
   clearSelection: "GPTBD_CLEAR_SELECTION",
+  archiveSelected: "GPTBD_ARCHIVE_SELECTED",
   deleteSelected: "GPTBD_DELETE_SELECTED"
 } as const;
-const DELETE_LABELS = ["delete", "삭제"];
-const CONFIRM_LABELS = ["delete", "confirm", "삭제", "확인"];
+type BulkConversationAction = "archive" | "delete";
+type BulkActionConfig = {
+  labels: string[];
+  confirmLabels: string[];
+  dialogTitle: string;
+  dialogBody: (count: number) => string;
+  buttonLabel: string;
+  progressVerb: string;
+  doneVerb: string;
+  danger: boolean;
+  requiresMenuConfirm: boolean;
+};
+const ACTION_CONFIG: Record<BulkConversationAction, BulkActionConfig> = {
+  archive: {
+    labels: ["archive", "archived", "보관", "아카이브"],
+    confirmLabels: ["archive", "confirm", "보관", "확인"],
+    dialogTitle: "Confirm archive",
+    dialogBody: (count) =>
+      `Archive ${count} selected conversations? You can restore archived chats from ChatGPT settings.`,
+    buttonLabel: "Archive",
+    progressVerb: "Archiving",
+    doneVerb: "archived",
+    danger: false,
+    requiresMenuConfirm: false
+  },
+  delete: {
+    labels: ["delete", "삭제"],
+    confirmLabels: ["delete", "confirm", "삭제", "확인"],
+    dialogTitle: "Confirm delete",
+    dialogBody: (count) =>
+      `Delete ${count} selected conversations? This uses ChatGPT's visible delete controls and cannot be undone here.`,
+    buttonLabel: "Delete",
+    progressVerb: "Deleting",
+    doneVerb: "deleted",
+    danger: true,
+    requiresMenuConfirm: true
+  }
+};
 const MENU_LABELS = ["options", "more", "menu", "conversation options", "옵션", "더 보기"];
 const HISTORY_HEADER_CLASS = "text-token-text-tertiary";
 
@@ -108,7 +145,13 @@ class BulkDeleteController {
     this.overlayRoot.append(this.checkboxLayer, this.actionBar, this.dialogHost, this.notice);
     this.shadow.append(this.overlayRoot);
 
-    this.observer = new MutationObserver(() => this.scheduleRefresh());
+    this.observer = new MutationObserver((mutations) => {
+      if (mutations.every((mutation) => this.isOwnMutation(mutation))) {
+        return;
+      }
+
+      this.scheduleRefresh();
+    });
   }
 
   async init(): Promise<void> {
@@ -132,9 +175,15 @@ class BulkDeleteController {
   }
 
   async setBulkMode(enabled: boolean): Promise<ExtensionState> {
+    if (this.bulkMode === enabled) {
+      return this.getState();
+    }
+
     this.bulkMode = enabled;
-    await storageSet(STORAGE_KEYS.bulkMode, enabled);
-    this.refresh();
+    void storageSet(STORAGE_KEYS.bulkMode, enabled);
+    this.syncToolbarSpacer();
+    this.refreshRows();
+    this.render({ recollectOnSpacerChange: false });
     return this.getState();
   }
 
@@ -152,8 +201,16 @@ class BulkDeleteController {
   }
 
   requestDeleteSelected(): ExtensionState {
+    return this.requestActionSelected("delete");
+  }
+
+  requestArchiveSelected(): ExtensionState {
+    return this.requestActionSelected("archive");
+  }
+
+  requestActionSelected(action: BulkConversationAction): ExtensionState {
     if (this.selectedIds.size > 0 && !this.isDeleting) {
-      this.showDeleteDialog();
+      this.showActionDialog(action);
     }
 
     return this.getState();
@@ -193,6 +250,8 @@ class BulkDeleteController {
         return this.selectAllVisible();
       case MESSAGE_TYPES.clearSelection:
         return this.clearSelection();
+      case MESSAGE_TYPES.archiveSelected:
+        return this.requestArchiveSelected();
       case MESSAGE_TYPES.deleteSelected:
         return this.requestDeleteSelected();
     }
@@ -219,23 +278,25 @@ class BulkDeleteController {
   }
 
   private refresh(): void {
+    this.refreshRows();
+    this.render();
+  }
+
+  private refreshRows(): void {
     this.clearRowHighlights();
     const nextRows = collectConversationRows();
     this.rows = new Map(nextRows.map((row) => [row.id, row]));
     this.applyRowHighlights();
-    this.render();
   }
 
-  private render(): void {
+  private render(options: { recollectOnSpacerChange?: boolean } = {}): void {
+    const recollectOnSpacerChange = options.recollectOnSpacerChange ?? true;
     document.documentElement.classList.toggle("gptbd-bulk-active", this.bulkMode);
     this.host.toggleAttribute("data-active", this.bulkMode);
     this.clearRowHighlights();
     this.applyRowHighlights();
-    if (this.syncToolbarSpacer()) {
-      this.clearRowHighlights();
-      const nextRows = collectConversationRows();
-      this.rows = new Map(nextRows.map((row) => [row.id, row]));
-      this.applyRowHighlights();
+    if (this.syncToolbarSpacer() && recollectOnSpacerChange) {
+      this.refreshRows();
     }
     this.renderSelectionLayer();
     this.renderActionBar();
@@ -356,11 +417,11 @@ class BulkDeleteController {
       return;
     }
 
+    const allVisibleSelected = this.rows.size > 0 && this.selectedIds.size === this.rows.size;
     const actionsRow = document.createElement("div");
     actionsRow.className = "toolbar-actions";
 
-    const allVisibleSelected = this.rows.size > 0 && this.selectedIds.size === this.rows.size;
-    const selectAllButton = createActionButton(allVisibleSelected ? "Deselect all" : "Select all", () => {
+    const selectAllButton = createActionButton(allVisibleSelected ? "None" : "All", () => {
       if (allVisibleSelected) {
         this.clearSelection();
         return;
@@ -368,6 +429,7 @@ class BulkDeleteController {
 
       this.selectAllVisible();
     });
+    selectAllButton.setAttribute("aria-label", allVisibleSelected ? "Deselect all" : "Select all");
     selectAllButton.disabled = this.rows.size === 0 || this.isDeleting;
 
     const clearButton = createActionButton("Clear", () => {
@@ -375,13 +437,18 @@ class BulkDeleteController {
     });
     clearButton.disabled = this.selectedIds.size === 0 || this.isDeleting;
 
+    const archiveButton = createActionButton("Archive", () => {
+      this.showActionDialog("archive");
+    });
+    archiveButton.disabled = this.selectedIds.size === 0 || this.isDeleting;
+
     const deleteButton = createActionButton("Delete", () => {
-      this.showDeleteDialog();
+      this.showActionDialog("delete");
     });
     deleteButton.className = "danger";
     deleteButton.disabled = this.selectedIds.size === 0 || this.isDeleting;
 
-    actionsRow.append(selectAllButton, clearButton, deleteButton);
+    actionsRow.append(selectAllButton, clearButton, archiveButton, deleteButton);
     this.actionBar.replaceChildren(topRow, actionsRow);
   }
 
@@ -413,11 +480,12 @@ class BulkDeleteController {
     return changed;
   }
 
-  private showDeleteDialog(): void {
+  private showActionDialog(action: BulkConversationAction): void {
     if (this.selectedIds.size === 0 || this.isDeleting) {
       return;
     }
 
+    const config = ACTION_CONFIG[action];
     const backdrop = document.createElement("div");
     backdrop.className = "dialog-backdrop";
 
@@ -425,14 +493,14 @@ class BulkDeleteController {
     dialog.className = "dialog";
     dialog.setAttribute("role", "dialog");
     dialog.setAttribute("aria-modal", "true");
-    dialog.setAttribute("aria-labelledby", "gptbd-confirm-title");
+    dialog.setAttribute("aria-labelledby", `gptbd-confirm-${action}-title`);
 
     const title = document.createElement("h2");
-    title.id = "gptbd-confirm-title";
-    title.textContent = "Confirm delete";
+    title.id = `gptbd-confirm-${action}-title`;
+    title.textContent = config.dialogTitle;
 
     const body = document.createElement("p");
-    body.textContent = `Delete ${this.selectedIds.size} selected conversations? This uses ChatGPT's visible delete controls and cannot be undone here.`;
+    body.textContent = config.dialogBody(this.selectedIds.size);
 
     const actions = document.createElement("div");
     actions.className = "dialog-actions";
@@ -440,11 +508,13 @@ class BulkDeleteController {
     const cancel = createActionButton("Cancel", () => {
       this.dialogHost.replaceChildren();
     });
-    const confirm = createActionButton("Delete", () => {
+    const confirm = createActionButton(config.buttonLabel, () => {
       this.dialogHost.replaceChildren();
-      void this.deleteSelectedConversations();
+      void this.applyActionToSelectedConversations(action);
     });
-    confirm.className = "danger";
+    if (config.danger) {
+      confirm.className = "danger";
+    }
 
     actions.append(cancel, confirm);
     dialog.append(title, body, actions);
@@ -453,13 +523,14 @@ class BulkDeleteController {
     cancel.focus();
   }
 
-  private async deleteSelectedConversations(): Promise<void> {
+  private async applyActionToSelectedConversations(action: BulkConversationAction): Promise<void> {
+    const config = ACTION_CONFIG[action];
     const selectedRows = Array.from(this.selectedIds)
       .map((id) => this.rows.get(id))
       .filter((row): row is ConversationRow => Boolean(row));
 
     if (selectedRows.length === 0) {
-      this.showNotice("No visible selected conversations to delete.");
+      this.showNotice("No visible selected conversations to process.");
       return;
     }
 
@@ -470,10 +541,10 @@ class BulkDeleteController {
     const results: DeleteItemResult[] = [];
 
     for (const row of selectedRows) {
-      this.showNotice(`Deleting "${truncate(row.title, 42)}"...`);
+      this.showNotice(`${config.progressVerb} "${truncate(row.title, 42)}"...`);
 
       try {
-        await deleteConversationThroughUi(row);
+        await applyConversationMenuAction(row, config);
         results.push({ id: row.id, title: row.title, ok: true });
         this.selectedIds = removeSelected(this.selectedIds, [row.id]);
       } catch (error) {
@@ -500,8 +571,8 @@ class BulkDeleteController {
     this.isDeleting = false;
     this.showNotice(
       failed > 0
-        ? `${deleted} deleted, ${failed} failed. Failed items remain selected.`
-        : `${deleted} conversations deleted.`
+        ? `${deleted} ${config.doneVerb}, ${failed} failed. Failed items remain selected.`
+        : `${deleted} conversations ${config.doneVerb}.`
     );
     this.refresh();
   }
@@ -674,9 +745,18 @@ class BulkDeleteController {
 
     this.render();
   }
+
+  private isOwnMutation(mutation: MutationRecord): boolean {
+    const nodes = [...Array.from(mutation.addedNodes), ...Array.from(mutation.removedNodes)];
+
+    return nodes.length > 0 && nodes.every((node) => node === this.toolbarSpacer);
+  }
 }
 
-async function deleteConversationThroughUi(row: ConversationRow): Promise<void> {
+async function applyConversationMenuAction(
+  row: ConversationRow,
+  config: BulkActionConfig
+): Promise<void> {
   row.row.scrollIntoView({ block: "center", inline: "nearest" });
   revealRow(row.row);
   await delay(180);
@@ -684,19 +764,26 @@ async function deleteConversationThroughUi(row: ConversationRow): Promise<void> 
   const menuButton = await waitFor(() => findMenuButton(row.row), 2200);
   clickElement(menuButton);
 
-  const deleteItem = await waitFor(() => findVisibleControlByText(DELETE_LABELS), 2600);
-  clickElement(deleteItem);
+  const actionItem = await waitFor(() => findVisibleControlByText(config.labels), 2600);
+  clickElement(actionItem);
 
-  const confirmButton = await waitFor(() => findDialogConfirmButton(CONFIRM_LABELS), 3000);
-  clickElement(confirmButton);
+  const confirmButton = config.requiresMenuConfirm
+    ? await waitFor(() => findDialogConfirmButton(config.confirmLabels), 3000)
+    : await waitFor(() => findDialogConfirmButton(config.confirmLabels), 900).catch(() => null);
+
+  if (confirmButton) {
+    clickElement(confirmButton);
+  }
 
   await waitFor(() => !findAnchorByConversationId(row.id), 7000);
 }
 
 function findMenuButton(row: HTMLElement): HTMLElement | null {
   revealRow(row);
-  const candidates = Array.from(row.querySelectorAll<HTMLElement>('button,[role="button"]')).filter(
-    isVisibleElement
+  const candidates = Array.from(
+    row.querySelectorAll<HTMLElement>(
+      'button,[role="button"],[aria-haspopup="menu"],[data-testid*="menu" i],[data-testid*="option" i]'
+    )
   );
 
   const labelled = candidates.find((candidate) => {
@@ -704,15 +791,34 @@ function findMenuButton(row: HTMLElement): HTMLElement | null {
     return MENU_LABELS.some((keyword) => label.includes(keyword));
   });
 
-  return labelled ?? candidates.at(-1) ?? null;
+  if (labelled) {
+    return labelled;
+  }
+
+  const rowRect = row.getBoundingClientRect();
+  const overlapping = candidates
+    .map((candidate) => ({ candidate, rect: candidate.getBoundingClientRect() }))
+    .filter(({ rect }) => rect.right > rowRect.left && rect.left < rowRect.right)
+    .sort((a, b) => b.rect.left - a.rect.left);
+
+  return overlapping[0]?.candidate ?? candidates.at(-1) ?? null;
 }
 
 function findVisibleControlByText(keywords: string[]): HTMLElement | null {
-  const candidates = Array.from(
+  const menuRoots = Array.from(
     document.querySelectorAll<HTMLElement>(
-      'button,[role="button"],[role="menuitem"],[role="option"],div[tabindex],span[tabindex]'
+      '[role="menu"],[role="listbox"],[data-radix-popper-content-wrapper],dialog,[role="dialog"]'
     )
   ).filter(isVisibleElement);
+  const roots = menuRoots.length > 0 ? menuRoots : [document.body];
+
+  const candidates = roots.flatMap((root) =>
+    Array.from(
+      root.querySelectorAll<HTMLElement>(
+        'button,[role="button"],[role="menuitem"],[role="option"],div[tabindex],span[tabindex]'
+      )
+    ).filter(isVisibleElement)
+  );
 
   return (
     candidates.find((candidate) => {
@@ -757,10 +863,38 @@ function revealRow(row: HTMLElement): void {
 }
 
 function clickElement(element: HTMLElement): void {
-  element.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true }));
-  element.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, view: window }));
-  element.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, cancelable: true }));
-  element.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true, view: window }));
+  const rect = element.getBoundingClientRect();
+  const clientX = Math.round(rect.left + rect.width / 2);
+  const clientY = Math.round(rect.top + rect.height / 2);
+  const pointerInit: PointerEventInit = {
+    bubbles: true,
+    cancelable: true,
+    clientX,
+    clientY,
+    button: 0,
+    buttons: 1,
+    pointerId: 1,
+    pointerType: "mouse",
+    isPrimary: true
+  };
+  const mouseInit: MouseEventInit = {
+    bubbles: true,
+    cancelable: true,
+    view: window,
+    clientX,
+    clientY,
+    button: 0,
+    buttons: 1
+  };
+
+  element.dispatchEvent(new PointerEvent("pointerover", pointerInit));
+  element.dispatchEvent(new PointerEvent("pointerenter", pointerInit));
+  element.dispatchEvent(new MouseEvent("mouseover", mouseInit));
+  element.dispatchEvent(new MouseEvent("mouseenter", mouseInit));
+  element.dispatchEvent(new PointerEvent("pointerdown", pointerInit));
+  element.dispatchEvent(new MouseEvent("mousedown", mouseInit));
+  element.dispatchEvent(new PointerEvent("pointerup", { ...pointerInit, buttons: 0 }));
+  element.dispatchEvent(new MouseEvent("mouseup", { ...mouseInit, buttons: 0 }));
   element.click();
 }
 

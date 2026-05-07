@@ -11,6 +11,7 @@ const visibleCount = getElement<HTMLElement>("visibleCount");
 const selectedCount = getElement<HTMLElement>("selectedCount");
 const selectAll = getElement<HTMLButtonElement>("selectAll");
 const clear = getElement<HTMLButtonElement>("clear");
+const archiveButton = getElement<HTMLButtonElement>("archive");
 const deleteButton = getElement<HTMLButtonElement>("delete");
 const hint = getElement<HTMLElement>("hint");
 
@@ -31,6 +32,10 @@ selectAll.addEventListener("click", () => {
 
 clear.addEventListener("click", () => {
   void sendAndRender({ type: MESSAGE_TYPES.clearSelection });
+});
+
+archiveButton.addEventListener("click", () => {
+  void sendAndRender({ type: MESSAGE_TYPES.archiveSelected });
 });
 
 deleteButton.addEventListener("click", () => {
@@ -76,7 +81,7 @@ function renderState(state: ExtensionState): void {
   currentState = state;
   bulkMode.checked = state.bulkMode;
   statusText.textContent = state.isDeleting
-    ? "Deleting"
+    ? "Working"
     : state.bulkMode
       ? "Bulk mode on"
       : "Bulk mode off";
@@ -91,6 +96,7 @@ function renderState(state: ExtensionState): void {
   selectAll.textContent = isAllVisibleSelected(state) ? "Deselect all" : "Select all";
   selectAll.disabled = !enabled || state.visibleCount === 0;
   clear.disabled = !enabled || state.selectedCount === 0;
+  archiveButton.disabled = !enabled || state.selectedCount === 0;
   deleteButton.disabled = !enabled || state.selectedCount === 0;
 }
 
@@ -104,6 +110,7 @@ function renderUnavailable(): void {
   selectAll.textContent = "Select all";
   selectAll.disabled = true;
   clear.disabled = true;
+  archiveButton.disabled = true;
   deleteButton.disabled = true;
 }
 
@@ -113,6 +120,7 @@ function setBusy(isBusy: boolean): void {
   const canUseActions = Boolean(state?.bulkMode) && !state?.isDeleting && !isBusy;
   selectAll.disabled = !canUseActions || (state?.visibleCount ?? 0) === 0;
   clear.disabled = !canUseActions || (state?.selectedCount ?? 0) === 0;
+  archiveButton.disabled = !canUseActions || (state?.selectedCount ?? 0) === 0;
   deleteButton.disabled = !canUseActions || (state?.selectedCount ?? 0) === 0;
 }
 
