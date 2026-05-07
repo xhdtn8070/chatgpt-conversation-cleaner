@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 declare global {
   interface Window {
     __navigated: boolean;
+    __voiceClicked: boolean;
   }
 }
 
@@ -140,4 +141,45 @@ test("content script applies archive and delete through visible ChatGPT menu con
   await page.getByRole("button", { name: "Delete" }).click();
   await page.locator("#gptbd-root .dialog").getByRole("button", { name: "Delete" }).click();
   await expect(page.getByRole("link", { name: /beta release notes/i })).toHaveCount(0);
+});
+
+test("content script does not click unrelated page buttons when delete confirmation is missing", async ({
+  page
+}) => {
+  await page.addInitScript(() => {
+    const storage: Record<string, unknown> = { "gptbd.bulkMode": true };
+
+    window.chrome = {
+      storage: {
+        local: {
+          get(key: string, callback: (items: Record<string, unknown>) => void) {
+            callback({ [key]: storage[key] });
+          },
+          set(items: Record<string, unknown>, callback?: () => void) {
+            Object.assign(storage, items);
+            callback?.();
+          }
+        }
+      },
+      runtime: {
+        onMessage: {
+          addListener() {
+            return undefined;
+          }
+        }
+      }
+    } as unknown as typeof chrome;
+  });
+
+  await page.goto(pathToFileURL(resolve("fixtures/sidebar.html")).toString());
+  await page.addScriptTag({ path: resolve("dist/assets/content.js") });
+  await page.waitForSelector("html[data-gptbd-ready='true']");
+
+  await page.getByRole("checkbox", { name: /select gamma qa checklist/i }).click();
+  await page.getByRole("button", { name: "Delete" }).click();
+  await page.locator("#gptbd-root .dialog").getByRole("button", { name: "Delete" }).click();
+
+  await expect(page.getByRole("link", { name: "Gamma QA checklist" })).toHaveCount(1);
+  await expect.poll(() => page.evaluate(() => window.__voiceClicked)).toBe(false);
+  await expect(page.getByText(/0 deleted, 1 failed/i)).toBeVisible();
 });

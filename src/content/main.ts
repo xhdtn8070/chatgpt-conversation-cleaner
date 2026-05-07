@@ -1046,9 +1046,8 @@ function findVisibleMenuAction(config: BulkActionConfig): HTMLElement | null {
       '[role="menu"],[role="listbox"],[data-radix-popper-content-wrapper]'
     )
   ).filter(isVisibleElement);
-  const roots = menuRoots.length > 0 ? menuRoots : [document.body];
 
-  for (const root of roots) {
+  for (const root of menuRoots) {
     const candidates = findVisibleActionCandidates(root);
     const textMatch = findByAccessibleLabel(candidates, config.labels);
 
@@ -1078,9 +1077,8 @@ function findDialogConfirmButton(config: BulkActionConfig): HTMLElement | null {
   const dialogs = Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"],dialog')).filter(
     isVisibleElement
   );
-  const roots = dialogs.length > 0 ? dialogs : [document.body];
 
-  for (const root of roots) {
+  for (const root of dialogs) {
     const buttons = Array.from(root.querySelectorAll<HTMLElement>('button,[role="button"]')).filter(
       (button) => isVisibleElement(button) && isEnabledElement(button)
     );

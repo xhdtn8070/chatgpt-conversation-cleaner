@@ -88,6 +88,10 @@
       main {
         padding: 32px;
       }
+
+      #voice-button {
+        color: rgb(220, 38, 38);
+      }
     </style>
   </head>
   <body>
@@ -113,7 +117,7 @@
         <li id="row-gamma">
           <a href="/c/gamma" aria-label="Gamma QA checklist">
             <span>Gamma QA checklist</span>
-            <button class="more" aria-label="Open conversation options">...</button>
+            <button class="more broken" aria-label="Open conversation options">...</button>
           </a>
         </li>
         <li id="row-pinned">
@@ -128,9 +132,11 @@
     <main>
       <h1>Mock content</h1>
       <p>This fixture validates the injected checkbox lane without touching ChatGPT data.</p>
+      <button id="voice-button">Voice input</button>
     </main>
     <script>
       window.__navigated = false;
+      window.__voiceClicked = false;
       let activeMenu = null;
 
       for (const anchor of document.querySelectorAll("a")) {
@@ -140,6 +146,10 @@
           window.__navigated = !wasPrevented;
         });
       }
+
+      document.getElementById("voice-button").addEventListener("click", () => {
+        window.__voiceClicked = true;
+      });
 
       function closeMenu() {
         activeMenu?.remove();
@@ -184,6 +194,11 @@
           del.textContent = "Eliminar";
           del.addEventListener("click", () => {
             closeMenu();
+
+            if (button.classList.contains("broken")) {
+              return;
+            }
+
             const dialog = document.createElement("section");
             dialog.setAttribute("role", "dialog");
             dialog.style.position = "fixed";
