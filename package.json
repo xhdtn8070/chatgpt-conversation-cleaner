@@ -1,11 +1,13 @@
 {
-  "name": "gpt-bulk-delete",
+  "name": "chatgpt-conversation-cleaner",
   "version": "0.1.0",
   "private": true,
-  "description": "A Manifest V3 Chrome extension for reliable bulk selection and deletion in the ChatGPT sidebar.",
+  "description": "A Manifest V3 Chrome extension for safer bulk archive/delete actions in the ChatGPT sidebar.",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
+    "icons": "node scripts/render-icons.mjs",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

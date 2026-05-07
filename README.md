@@ -1,38 +1,106 @@
-# ChatGPT Bulk Delete
+<p align="center">
+  <img src="public/icons/icon.svg" width="88" height="88" alt="Conversation Cleaner for ChatGPT icon">
+</p>
 
-A Manifest V3 Chrome extension that adds a stable bulk-selection overlay to the ChatGPT sidebar. Delete and archive actions try ChatGPT's same-origin web API first, then fall back to scoped UI automation only inside active ChatGPT menus and dialogs.
+<h1 align="center">Conversation Cleaner for ChatGPT</h1>
 
-![UX mockup](docs/ux-mockup.png)
+<p align="center">
+  A Manifest V3 Chrome extension that adds a stable bulk-selection layer to the ChatGPT sidebar.
+  Select conversations, then archive or delete them with confirmation.
+</p>
 
-## Goals
+<p align="center">
+  <strong>API-first</strong> · <strong>Scoped UI fallback</strong> · <strong>No third-party servers</strong>
+</p>
 
-- Show a dedicated checkbox lane in the ChatGPT sidebar only when Bulk mode is enabled.
-- Keep checkbox clicks separate from conversation row navigation.
-- In Bulk mode, clicking a conversation row toggles selection instead of navigating.
-- Require an explicit confirmation before destructive actions.
-- Prefer same-origin ChatGPT web API actions over UI clicking.
-- Keep UI fallback constrained to active menus and dialogs.
-- Store only local extension settings with `chrome.storage.local`.
+![Conversation Cleaner sidebar mockup](docs/ux-mockup.png)
+
+## Why This Exists
+
+ChatGPT's sidebar rows are links, so adding checkboxes directly inside the row can accidentally navigate away or miss clicks. This extension keeps bulk selection in a dedicated overlay lane and makes row clicks toggle selection only while Bulk mode is on.
+
+The goal is a calmer cleanup flow:
+
+- Turn on Bulk mode from the popup or inline sidebar control.
+- Select visible conversations with a large, stable click target.
+- Archive or delete selected conversations.
+- Keep pinned conversations protected until the user unpins them.
+
+## Features
+
+- Dedicated checkbox lane that does not shift ChatGPT's sidebar layout.
+- Bulk mode row-click interception, so clicking a title selects instead of navigating.
+- Select all, deselect all, clear, archive, and delete actions.
+- API-first archive/delete using ChatGPT's same-origin web API.
+- Scoped UI fallback that only interacts with active ChatGPT menus and dialogs.
+- Destructive action confirmation before deletion.
+- Pinned conversation guardrails.
+- Local settings only through `chrome.storage.local`.
+
+## Safety Model
+
+Conversation Cleaner avoids fixed-position clicking. It resolves the selected conversation row, opens only that row's menu when fallback is needed, then scopes follow-up clicks to the visible ChatGPT menu or confirmation dialog.
+
+The action order is:
+
+1. Try ChatGPT's same-origin web API for the selected conversation.
+2. If the API is unavailable, use scoped UI fallback.
+3. If one item fails, stop the batch and keep the remaining items selected.
+
+## Install Locally
+
+```bash
+npm install
+npm run icons
+npm run build
+```
+
+Then load the extension:
+
+1. Open `chrome://extensions` in Chrome.
+2. Enable Developer mode.
+3. Click Load unpacked.
+4. Select `/Users/xhddlf8070/Desktop/git/gpt-bulk-delete/dist`.
+
+After rebuilding, click Reload on the extension card in `chrome://extensions`.
 
 ## Development
 
 ```bash
-npm install
 npm run typecheck
 npm run test
+npm run test:browser
 npm run build
 ```
 
-Load `dist/` as an unpacked extension from `chrome://extensions`.
+Useful scripts:
 
-## Verification
+- `npm run icons`: render PNG icon sizes from `public/icons/icon.svg`.
+- `npm run build`: build the unpacked extension into `dist/`.
+- `npm run test`: run unit tests for parsing, selection, and positioning.
+- `npm run test:browser`: run Playwright coverage against the mock ChatGPT sidebar.
 
-```bash
-npm run test:browser
+## Project Structure
+
+```text
+public/manifest.json       Chrome extension manifest
+public/icons/icon.svg      Source icon
+src/content/               ChatGPT sidebar overlay and action logic
+src/popup/                 Extension popup UI
+src/shared/                Message contracts
+fixtures/                  Mock ChatGPT pages for browser tests
+tests/                     Unit and browser tests
+docs/ux-mockup.png         UX direction mockup
 ```
-
-The browser test uses a local mock sidebar fixture and injects the built content script to verify overlay rendering, selection, API-first actions, scoped UI fallback, and click isolation.
 
 ## Privacy
 
-This extension only sends selected conversation IDs to ChatGPT's own same-origin web API when applying archive/delete actions. It does not send data to any third-party server. See `PRIVACY.md`.
+This extension runs locally in the browser. It does not send conversation data to third-party servers. Selected conversation IDs are used only against ChatGPT's own same-origin web API or ChatGPT's visible UI controls. See [PRIVACY.md](PRIVACY.md).
+
+## License
+
+MIT. See [LICENSE](LICENSE).
+
+## Status
+
+This is an early local build intended for careful manual testing before public Chrome Web Store packaging.

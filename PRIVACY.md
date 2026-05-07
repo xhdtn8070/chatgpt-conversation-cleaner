@@ -1,6 +1,6 @@
 # Privacy
 
-ChatGPT Bulk Delete runs locally in the browser.
+Conversation Cleaner for ChatGPT runs locally in the browser.
 
 - No third-party network requests are made by the extension.
 - Selected conversation IDs are sent only to ChatGPT's own same-origin web API to apply archive/delete actions.
