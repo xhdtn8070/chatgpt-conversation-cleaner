@@ -36,6 +36,8 @@ The goal is a calmer cleanup flow:
 - Destructive action confirmation before deletion.
 - Pinned conversation guardrails.
 - Local settings only through `chrome.storage.local`.
+- English and Korean extension UI through Chrome i18n locales.
+- Popup language toggle for switching the extension UI between English and Korean.
 
 ## Safety Model
 
@@ -84,6 +86,7 @@ Useful scripts:
 
 ```text
 public/manifest.json       Chrome extension manifest
+public/_locales/           English and Korean extension strings
 public/icons/icon.svg      Source icon
 src/content/               ChatGPT sidebar overlay and action logic
 src/popup/                 Extension popup UI

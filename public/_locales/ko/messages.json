@@ -1,0 +1,252 @@
+{
+  "extensionName": {
+    "message": "ChatGPT 대화 정리",
+    "description": "확장 프로그램 이름."
+  },
+  "extensionDescription": {
+    "message": "ChatGPT 사이드바에서 대화를 더 안전하게 일괄 선택하고 보관하거나 삭제합니다.",
+    "description": "확장 프로그램 설명."
+  },
+  "popupHeading": {
+    "message": "정리"
+  },
+  "popupToggleTitle": {
+    "message": "일괄 선택 모드 전환"
+  },
+  "popupBulkActionsAria": {
+    "message": "일괄 작업"
+  },
+  "popupStatusLabel": {
+    "message": "상태"
+  },
+  "popupVisibleLabel": {
+    "message": "표시됨"
+  },
+  "popupSelectedLabel": {
+    "message": "선택됨"
+  },
+  "popupConnecting": {
+    "message": "연결 중..."
+  },
+  "popupStatusWorking": {
+    "message": "작업 중"
+  },
+  "popupStatusOn": {
+    "message": "일괄 모드 켜짐"
+  },
+  "popupStatusOff": {
+    "message": "일괄 모드 꺼짐"
+  },
+  "popupStatusOpenChatGpt": {
+    "message": "ChatGPT 열기"
+  },
+  "popupHintReady": {
+    "message": "체크박스 영역이 ChatGPT 사이드바에 표시됩니다."
+  },
+  "popupHintNoRows": {
+    "message": "이 페이지에서 표시된 사이드바 대화를 찾지 못했습니다."
+  },
+  "popupHintUnavailable": {
+    "message": "chatgpt.com을 연 다음 팝업을 다시 열어 일괄 모드를 제어하세요."
+  },
+  "popupHintInitial": {
+    "message": "ChatGPT를 열고 일괄 모드를 켜면 사이드바 체크박스가 표시됩니다."
+  },
+  "languageToggleAria": {
+    "message": "$LANGUAGE$로 전환",
+    "placeholders": {
+      "language": {
+        "content": "$1",
+        "example": "영어"
+      }
+    }
+  },
+  "languageEnglish": {
+    "message": "영어"
+  },
+  "languageKorean": {
+    "message": "한국어"
+  },
+  "overlayAria": {
+    "message": "ChatGPT 일괄 삭제 컨트롤"
+  },
+  "bulkModeAria": {
+    "message": "일괄 삭제 모드"
+  },
+  "toolbarOff": {
+    "message": "일괄 정리 꺼짐"
+  },
+  "toolbarSelectedCount": {
+    "message": "$COUNT$개 선택됨",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "modeOn": {
+    "message": "켬"
+  },
+  "modeOff": {
+    "message": "끔"
+  },
+  "actionSelectAllShort": {
+    "message": "전체"
+  },
+  "actionDeselectAllShort": {
+    "message": "해제"
+  },
+  "actionSelectAll": {
+    "message": "전체 선택"
+  },
+  "actionDeselectAll": {
+    "message": "전체 해제"
+  },
+  "actionClear": {
+    "message": "초기화"
+  },
+  "actionArchive": {
+    "message": "보관"
+  },
+  "actionDelete": {
+    "message": "삭제"
+  },
+  "actionCancel": {
+    "message": "취소"
+  },
+  "rowToggleAria": {
+    "message": "$TITLE$ 선택 전환",
+    "placeholders": {
+      "title": {
+        "content": "$1",
+        "example": "기획 대화"
+      }
+    }
+  },
+  "rowSelectAria": {
+    "message": "$TITLE$ 선택",
+    "placeholders": {
+      "title": {
+        "content": "$1",
+        "example": "기획 대화"
+      }
+    }
+  },
+  "pinnedSelectAria": {
+    "message": "$TITLE$은 고정된 대화입니다. 선택하기 전에 고정을 해제하세요.",
+    "placeholders": {
+      "title": {
+        "content": "$1",
+        "example": "기획 대화"
+      }
+    }
+  },
+  "pinnedNotice": {
+    "message": "\"$TITLE$\"은 고정된 대화입니다. ChatGPT에서 고정을 해제한 뒤 선택하세요.",
+    "placeholders": {
+      "title": {
+        "content": "$1",
+        "example": "기획 대화"
+      }
+    }
+  },
+  "pinnedError": {
+    "message": "고정된 대화는 먼저 고정을 해제해야 합니다."
+  },
+  "noVisibleSelected": {
+    "message": "처리할 수 있는 표시된 선택 대화가 없습니다."
+  },
+  "dialogArchiveTitle": {
+    "message": "보관 확인"
+  },
+  "dialogArchiveBody": {
+    "message": "선택한 대화 $COUNT$개를 보관할까요? 보관된 대화는 ChatGPT 설정에서 복원할 수 있습니다.",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "dialogDeleteTitle": {
+    "message": "삭제 확인"
+  },
+  "dialogDeleteBody": {
+    "message": "선택한 대화 $COUNT$개를 삭제할까요? ChatGPT의 삭제 흐름을 사용하며 여기서는 되돌릴 수 없습니다.",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "busyArchiveSelected": {
+    "message": "선택한 대화를 보관 중..."
+  },
+  "busyDeleteSelected": {
+    "message": "선택한 대화를 삭제 중..."
+  },
+  "busyArchiveItem": {
+    "message": "\"$TITLE$\" 보관 중...",
+    "placeholders": {
+      "title": {
+        "content": "$1",
+        "example": "기획 대화"
+      }
+    }
+  },
+  "busyDeleteItem": {
+    "message": "\"$TITLE$\" 삭제 중...",
+    "placeholders": {
+      "title": {
+        "content": "$1",
+        "example": "기획 대화"
+      }
+    }
+  },
+  "summaryArchiveSuccess": {
+    "message": "대화 $COUNT$개를 보관했습니다.",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "summaryDeleteSuccess": {
+    "message": "대화 $COUNT$개를 삭제했습니다.",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "summaryArchiveFailed": {
+    "message": "$DONE$개 보관됨, $FAILED$개 실패. 실패 항목은 선택 상태로 남아 있습니다.",
+    "placeholders": {
+      "done": {
+        "content": "$1",
+        "example": "1"
+      },
+      "failed": {
+        "content": "$2",
+        "example": "1"
+      }
+    }
+  },
+  "summaryDeleteFailed": {
+    "message": "$DONE$개 삭제됨, $FAILED$개 실패. 실패 항목은 선택 상태로 남아 있습니다.",
+    "placeholders": {
+      "done": {
+        "content": "$1",
+        "example": "1"
+      },
+      "failed": {
+        "content": "$2",
+        "example": "1"
+      }
+    }
+  }
+}

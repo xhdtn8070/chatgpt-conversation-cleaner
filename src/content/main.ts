@@ -6,17 +6,27 @@ import type {
   ExtensionMessage,
   ExtensionState
 } from "../shared/messages";
+import {
+  getDefaultLanguage,
+  normalizeLanguage,
+  setActiveLanguage,
+  t,
+  type LanguageCode,
+  type MessageKey
+} from "./i18n";
 import { clearSelection, removeSelected, selectAll, toggleSelection } from "./selection";
 import { DOCUMENT_CSS, SHADOW_CSS } from "./styles";
 
 const ROOT_ID = "gptbd-root";
 const DOCUMENT_STYLE_ID = "gptbd-document-style";
 const STORAGE_KEYS = {
-  bulkMode: "gptbd.bulkMode"
+  bulkMode: "gptbd.bulkMode",
+  language: "gptbd.language"
 } as const;
 const MESSAGE_TYPES = {
   getState: "GPTBD_GET_STATE",
   setBulkMode: "GPTBD_SET_BULK_MODE",
+  setLanguage: "GPTBD_SET_LANGUAGE",
   selectAllVisible: "GPTBD_SELECT_ALL_VISIBLE",
   clearSelection: "GPTBD_CLEAR_SELECTION",
   archiveSelected: "GPTBD_ARCHIVE_SELECTED",
@@ -27,11 +37,13 @@ type BulkActionConfig = {
   apiPayload: Record<string, boolean>;
   labels: string[];
   confirmLabels: string[];
-  dialogTitle: string;
-  dialogBody: (count: number) => string;
-  buttonLabel: string;
-  progressVerb: string;
-  doneVerb: string;
+  dialogTitleKey: MessageKey;
+  dialogBodyKey: MessageKey;
+  buttonLabelKey: MessageKey;
+  busySelectedKey: MessageKey;
+  busyItemKey: MessageKey;
+  summarySuccessKey: MessageKey;
+  summaryFailedKey: MessageKey;
   danger: boolean;
   requiresMenuConfirm: boolean;
 };
@@ -40,12 +52,13 @@ const ACTION_CONFIG: Record<BulkConversationAction, BulkActionConfig> = {
     apiPayload: { is_archived: true },
     labels: ["archive", "archived", "보관", "아카이브"],
     confirmLabels: ["archive", "confirm", "보관", "확인"],
-    dialogTitle: "Confirm archive",
-    dialogBody: (count) =>
-      `Archive ${count} selected conversations? You can restore archived chats from ChatGPT settings.`,
-    buttonLabel: "Archive",
-    progressVerb: "Archiving",
-    doneVerb: "archived",
+    dialogTitleKey: "dialogArchiveTitle",
+    dialogBodyKey: "dialogArchiveBody",
+    buttonLabelKey: "actionArchive",
+    busySelectedKey: "busyArchiveSelected",
+    busyItemKey: "busyArchiveItem",
+    summarySuccessKey: "summaryArchiveSuccess",
+    summaryFailedKey: "summaryArchiveFailed",
     danger: false,
     requiresMenuConfirm: false
   },
@@ -53,12 +66,13 @@ const ACTION_CONFIG: Record<BulkConversationAction, BulkActionConfig> = {
     apiPayload: { is_visible: false },
     labels: ["delete", "삭제"],
     confirmLabels: ["delete", "confirm", "삭제", "확인"],
-    dialogTitle: "Confirm delete",
-    dialogBody: (count) =>
-      `Delete ${count} selected conversations? This uses ChatGPT's visible delete controls and cannot be undone here.`,
-    buttonLabel: "Delete",
-    progressVerb: "Deleting",
-    doneVerb: "deleted",
+    dialogTitleKey: "dialogDeleteTitle",
+    dialogBodyKey: "dialogDeleteBody",
+    buttonLabelKey: "actionDelete",
+    busySelectedKey: "busyDeleteSelected",
+    busyItemKey: "busyDeleteItem",
+    summarySuccessKey: "summaryDeleteSuccess",
+    summaryFailedKey: "summaryDeleteFailed",
     danger: true,
     requiresMenuConfirm: true
   }
@@ -85,6 +99,7 @@ declare global {
 
 class BulkDeleteController {
   private bulkMode = false;
+  private language: LanguageCode = getDefaultLanguage();
   private selectedIds = new Set<string>();
   private rows = new Map<string, ConversationRow>();
   private host: HTMLElement;
@@ -146,7 +161,7 @@ class BulkDeleteController {
 
     this.overlayRoot = document.createElement("section");
     this.overlayRoot.className = "overlay-root";
-    this.overlayRoot.setAttribute("aria-label", "ChatGPT bulk delete controls");
+    this.overlayRoot.setAttribute("aria-label", t("overlayAria"));
 
     this.checkboxLayer = document.createElement("div");
     this.actionBar = document.createElement("div");
@@ -180,6 +195,9 @@ class BulkDeleteController {
 
   async init(): Promise<void> {
     this.bulkMode = await storageGet(STORAGE_KEYS.bulkMode, false);
+    this.language = normalizeLanguage(await storageGet(STORAGE_KEYS.language, this.language));
+    setActiveLanguage(this.language);
+    this.syncStaticI18n();
     this.bindRuntimeMessages();
     this.bindPageListeners();
     this.observer.observe(document.body, { childList: true, subtree: true });
@@ -194,6 +212,7 @@ class BulkDeleteController {
       selectedCount: this.selectedIds.size,
       visibleCount: this.rows.size,
       isDeleting: this.isDeleting,
+      language: this.language,
       lastDeleteSummary: this.lastDeleteSummary
     };
   }
@@ -208,6 +227,15 @@ class BulkDeleteController {
     this.syncToolbarSpacer();
     this.refreshRows();
     this.render({ recollectOnSpacerChange: false });
+    return this.getState();
+  }
+
+  async setLanguage(language: LanguageCode): Promise<ExtensionState> {
+    this.language = normalizeLanguage(language);
+    setActiveLanguage(this.language);
+    this.syncStaticI18n();
+    void storageSet(STORAGE_KEYS.language, this.language);
+    this.refresh();
     return this.getState();
   }
 
@@ -264,6 +292,7 @@ class BulkDeleteController {
             selectedCount: this.selectedIds.size,
             visibleCount: this.rows.size,
             isDeleting: this.isDeleting,
+            language: this.language,
             error: getErrorMessage(error)
           });
         });
@@ -279,6 +308,8 @@ class BulkDeleteController {
         return this.getState();
       case MESSAGE_TYPES.setBulkMode:
         return this.setBulkMode(message.enabled);
+      case MESSAGE_TYPES.setLanguage:
+        return this.setLanguage(message.language);
       case MESSAGE_TYPES.selectAllVisible:
         return this.selectAllVisible();
       case MESSAGE_TYPES.clearSelection:
@@ -336,6 +367,10 @@ class BulkDeleteController {
     this.renderNoticePosition();
   }
 
+  private syncStaticI18n(): void {
+    this.overlayRoot.setAttribute("aria-label", t("overlayAria"));
+  }
+
   private renderSelectionLayer(): void {
     this.checkboxLayer.replaceChildren();
 
@@ -356,7 +391,7 @@ class BulkDeleteController {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "row-hit-target";
-    button.setAttribute("aria-label", `Toggle ${row.title}`);
+    button.setAttribute("aria-label", t("rowToggleAria", { title: row.title }));
     button.style.left = `${Math.max(row.sidebarRect.left, row.rect.left)}px`;
     button.style.top = `${row.rect.top}px`;
     button.style.width = `${Math.max(0, Math.min(row.rect.right, row.sidebarRect.right) - Math.max(row.sidebarRect.left, row.rect.left))}px`;
@@ -395,7 +430,9 @@ class BulkDeleteController {
     button.setAttribute("aria-checked", String(selected));
     button.setAttribute(
       "aria-label",
-      row.isPinned ? `${row.title} is pinned. Unpin before selecting.` : `Select ${row.title}`
+      row.isPinned
+        ? t("pinnedSelectAria", { title: row.title })
+        : t("rowSelectAria", { title: row.title })
     );
     button.toggleAttribute("data-pinned", row.isPinned);
     button.style.left = `${layout.left}px`;
@@ -450,15 +487,17 @@ class BulkDeleteController {
 
     const count = document.createElement("span");
     count.className = "selected-count";
-    count.textContent = this.bulkMode ? `${this.selectedIds.size} selected` : "Bulk delete off";
+    count.textContent = this.bulkMode
+      ? t("toolbarSelectedCount", { count: this.selectedIds.size })
+      : t("toolbarOff");
 
-    const toggleButton = createActionButton(this.bulkMode ? "On" : "Off", () => {
+    const toggleButton = createActionButton(this.bulkMode ? t("modeOn") : t("modeOff"), () => {
       void this.setBulkMode(!this.bulkMode);
     });
     toggleButton.className = "mode-toggle";
     toggleButton.setAttribute("role", "switch");
     toggleButton.setAttribute("aria-checked", String(this.bulkMode));
-    toggleButton.setAttribute("aria-label", "Bulk delete mode");
+    toggleButton.setAttribute("aria-label", t("bulkModeAria"));
 
     topRow.append(count, toggleButton);
 
@@ -474,28 +513,34 @@ class BulkDeleteController {
     const actionsRow = document.createElement("div");
     actionsRow.className = "toolbar-actions";
 
-    const selectAllButton = createActionButton(allVisibleSelected ? "None" : "All", () => {
-      if (allVisibleSelected) {
-        this.clearSelection();
-        return;
-      }
+    const selectAllButton = createActionButton(
+      allVisibleSelected ? t("actionDeselectAllShort") : t("actionSelectAllShort"),
+      () => {
+        if (allVisibleSelected) {
+          this.clearSelection();
+          return;
+        }
 
-      this.selectAllVisible();
-    });
-    selectAllButton.setAttribute("aria-label", allVisibleSelected ? "Deselect all" : "Select all");
+        this.selectAllVisible();
+      }
+    );
+    selectAllButton.setAttribute(
+      "aria-label",
+      allVisibleSelected ? t("actionDeselectAll") : t("actionSelectAll")
+    );
     selectAllButton.disabled = selectableRows.length === 0 || this.isDeleting;
 
-    const clearButton = createActionButton("Clear", () => {
+    const clearButton = createActionButton(t("actionClear"), () => {
       this.clearSelection();
     });
     clearButton.disabled = this.selectedIds.size === 0 || this.isDeleting;
 
-    const archiveButton = createActionButton("Archive", () => {
+    const archiveButton = createActionButton(t("actionArchive"), () => {
       this.showActionDialog("archive");
     });
     archiveButton.disabled = this.selectedIds.size === 0 || this.isDeleting;
 
-    const deleteButton = createActionButton("Delete", () => {
+    const deleteButton = createActionButton(t("actionDelete"), () => {
       this.showActionDialog("delete");
     });
     deleteButton.className = "danger";
@@ -550,18 +595,18 @@ class BulkDeleteController {
 
     const title = document.createElement("h2");
     title.id = `gptbd-confirm-${action}-title`;
-    title.textContent = config.dialogTitle;
+    title.textContent = t(config.dialogTitleKey);
 
     const body = document.createElement("p");
-    body.textContent = config.dialogBody(this.selectedIds.size);
+    body.textContent = t(config.dialogBodyKey, { count: this.selectedIds.size });
 
     const actions = document.createElement("div");
     actions.className = "dialog-actions";
 
-    const cancel = createActionButton("Cancel", () => {
+    const cancel = createActionButton(t("actionCancel"), () => {
       this.dialogHost.replaceChildren();
     });
-    const confirm = createActionButton(config.buttonLabel, () => {
+    const confirm = createActionButton(t(config.buttonLabelKey), () => {
       this.dialogHost.replaceChildren();
       void this.applyActionToSelectedConversations(action);
     });
@@ -583,13 +628,13 @@ class BulkDeleteController {
       .filter((row): row is ConversationRow => Boolean(row));
 
     if (selectedRows.length === 0) {
-      this.showNotice("No visible selected conversations to process.");
+      this.showNotice(t("noVisibleSelected"));
       return;
     }
 
     this.isDeleting = true;
     this.lastDeleteSummary = undefined;
-    this.showBusyShield(`${config.progressVerb} selected conversations...`);
+    this.showBusyShield(t(config.busySelectedKey));
     this.render();
 
     const results: DeleteItemResult[] = [];
@@ -600,14 +645,15 @@ class BulkDeleteController {
           id: row.id,
           title: row.title,
           ok: false,
-          error: "Pinned conversations must be unpinned first."
+          error: t("pinnedError")
         });
         this.showPinnedNotice(row);
         continue;
       }
 
-      this.showBusyShield(`${config.progressVerb} "${truncate(row.title, 42)}"...`);
-      this.showNotice(`${config.progressVerb} "${truncate(row.title, 42)}"...`);
+      const truncatedTitle = truncate(row.title, 42);
+      this.showBusyShield(t(config.busyItemKey, { title: truncatedTitle }));
+      this.showNotice(t(config.busyItemKey, { title: truncatedTitle }));
 
       try {
         await applyConversationAction(row, config);
@@ -639,8 +685,8 @@ class BulkDeleteController {
     this.hideBusyShield();
     this.showNotice(
       failed > 0
-        ? `${deleted} ${config.doneVerb}, ${failed} failed. Failed items remain selected.`
-        : `${deleted} conversations ${config.doneVerb}.`
+        ? t(config.summaryFailedKey, { done: deleted, failed })
+        : t(config.summarySuccessKey, { count: deleted })
     );
     this.refresh();
   }
@@ -832,7 +878,7 @@ class BulkDeleteController {
   }
 
   private showPinnedNotice(row: ConversationRow): void {
-    this.showNotice(`"${truncate(row.title, 42)}" is pinned. Unpin it in ChatGPT before selecting.`);
+    this.showNotice(t("pinnedNotice", { title: truncate(row.title, 42) }));
   }
 
   private showBusyShield(message: string): void {

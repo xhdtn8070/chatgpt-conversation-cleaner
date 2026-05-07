@@ -44,6 +44,21 @@ input {
   flex: 1 1 auto;
 }
 
+.header-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.language-toggle {
+  min-width: 42px;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
 .eyebrow {
   margin: 0 0 2px;
   color: color-mix(in srgb, CanvasText 58%, transparent);

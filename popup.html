@@ -11,30 +11,33 @@
         <img class="app-icon" src="/icons/icon.svg" alt="" aria-hidden="true" />
         <div class="title-block">
           <p class="eyebrow">ChatGPT</p>
-          <h1>Cleaner</h1>
+          <h1 id="appHeading">Cleaner</h1>
         </div>
-        <label class="switch" title="Toggle bulk selection mode">
-          <input id="bulkMode" type="checkbox" />
-          <span aria-hidden="true"></span>
-        </label>
+        <div class="header-controls">
+          <button id="languageToggle" class="language-toggle" type="button">KO</button>
+          <label id="bulkModeSwitch" class="switch" title="Toggle bulk selection mode">
+            <input id="bulkMode" type="checkbox" />
+            <span aria-hidden="true"></span>
+          </label>
+        </div>
       </section>
 
       <section class="status-panel" aria-live="polite">
         <div>
-          <span class="label">Status</span>
+          <span id="statusLabel" class="label">Status</span>
           <strong id="statusText">Connecting...</strong>
         </div>
         <div>
-          <span class="label">Visible</span>
+          <span id="visibleLabel" class="label">Visible</span>
           <strong id="visibleCount">0</strong>
         </div>
         <div>
-          <span class="label">Selected</span>
+          <span id="selectedLabel" class="label">Selected</span>
           <strong id="selectedCount">0</strong>
         </div>
       </section>
 
-      <section class="actions" aria-label="Bulk actions">
+      <section id="bulkActions" class="actions" aria-label="Bulk actions">
         <button id="selectAll" type="button">Select all visible</button>
         <button id="clear" type="button">Clear</button>
         <button id="archive" type="button">Archive</button>

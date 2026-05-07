@@ -1,0 +1,252 @@
+{
+  "extensionName": {
+    "message": "Conversation Cleaner for ChatGPT",
+    "description": "Extension name."
+  },
+  "extensionDescription": {
+    "message": "A safer bulk selection layer for archiving or deleting ChatGPT conversations from the sidebar.",
+    "description": "Extension description."
+  },
+  "popupHeading": {
+    "message": "Cleaner"
+  },
+  "popupToggleTitle": {
+    "message": "Toggle bulk selection mode"
+  },
+  "popupBulkActionsAria": {
+    "message": "Bulk actions"
+  },
+  "popupStatusLabel": {
+    "message": "Status"
+  },
+  "popupVisibleLabel": {
+    "message": "Visible"
+  },
+  "popupSelectedLabel": {
+    "message": "Selected"
+  },
+  "popupConnecting": {
+    "message": "Connecting..."
+  },
+  "popupStatusWorking": {
+    "message": "Working"
+  },
+  "popupStatusOn": {
+    "message": "Bulk mode on"
+  },
+  "popupStatusOff": {
+    "message": "Bulk mode off"
+  },
+  "popupStatusOpenChatGpt": {
+    "message": "Open ChatGPT"
+  },
+  "popupHintReady": {
+    "message": "The checkbox lane is rendered directly on the ChatGPT sidebar."
+  },
+  "popupHintNoRows": {
+    "message": "No visible sidebar conversations were detected on this page."
+  },
+  "popupHintUnavailable": {
+    "message": "Open chatgpt.com, then reopen this popup to control Bulk mode."
+  },
+  "popupHintInitial": {
+    "message": "Open ChatGPT and turn on Bulk mode to show the sidebar checkbox lane."
+  },
+  "languageToggleAria": {
+    "message": "Switch language to $LANGUAGE$",
+    "placeholders": {
+      "language": {
+        "content": "$1",
+        "example": "Korean"
+      }
+    }
+  },
+  "languageEnglish": {
+    "message": "English"
+  },
+  "languageKorean": {
+    "message": "Korean"
+  },
+  "overlayAria": {
+    "message": "ChatGPT bulk delete controls"
+  },
+  "bulkModeAria": {
+    "message": "Bulk delete mode"
+  },
+  "toolbarOff": {
+    "message": "Bulk delete off"
+  },
+  "toolbarSelectedCount": {
+    "message": "$COUNT$ selected",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "modeOn": {
+    "message": "On"
+  },
+  "modeOff": {
+    "message": "Off"
+  },
+  "actionSelectAllShort": {
+    "message": "All"
+  },
+  "actionDeselectAllShort": {
+    "message": "None"
+  },
+  "actionSelectAll": {
+    "message": "Select all"
+  },
+  "actionDeselectAll": {
+    "message": "Deselect all"
+  },
+  "actionClear": {
+    "message": "Clear"
+  },
+  "actionArchive": {
+    "message": "Archive"
+  },
+  "actionDelete": {
+    "message": "Delete"
+  },
+  "actionCancel": {
+    "message": "Cancel"
+  },
+  "rowToggleAria": {
+    "message": "Toggle $TITLE$",
+    "placeholders": {
+      "title": {
+        "content": "$1",
+        "example": "Planning thread"
+      }
+    }
+  },
+  "rowSelectAria": {
+    "message": "Select $TITLE$",
+    "placeholders": {
+      "title": {
+        "content": "$1",
+        "example": "Planning thread"
+      }
+    }
+  },
+  "pinnedSelectAria": {
+    "message": "$TITLE$ is pinned. Unpin before selecting.",
+    "placeholders": {
+      "title": {
+        "content": "$1",
+        "example": "Planning thread"
+      }
+    }
+  },
+  "pinnedNotice": {
+    "message": "\"$TITLE$\" is pinned. Unpin it in ChatGPT before selecting.",
+    "placeholders": {
+      "title": {
+        "content": "$1",
+        "example": "Planning thread"
+      }
+    }
+  },
+  "pinnedError": {
+    "message": "Pinned conversations must be unpinned first."
+  },
+  "noVisibleSelected": {
+    "message": "No visible selected conversations to process."
+  },
+  "dialogArchiveTitle": {
+    "message": "Confirm archive"
+  },
+  "dialogArchiveBody": {
+    "message": "Archive $COUNT$ selected conversations? You can restore archived chats from ChatGPT settings.",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "dialogDeleteTitle": {
+    "message": "Confirm delete"
+  },
+  "dialogDeleteBody": {
+    "message": "Delete $COUNT$ selected conversations? This uses ChatGPT's visible delete controls and cannot be undone here.",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "busyArchiveSelected": {
+    "message": "Archiving selected conversations..."
+  },
+  "busyDeleteSelected": {
+    "message": "Deleting selected conversations..."
+  },
+  "busyArchiveItem": {
+    "message": "Archiving \"$TITLE$\"...",
+    "placeholders": {
+      "title": {
+        "content": "$1",
+        "example": "Planning thread"
+      }
+    }
+  },
+  "busyDeleteItem": {
+    "message": "Deleting \"$TITLE$\"...",
+    "placeholders": {
+      "title": {
+        "content": "$1",
+        "example": "Planning thread"
+      }
+    }
+  },
+  "summaryArchiveSuccess": {
+    "message": "$COUNT$ conversations archived.",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "summaryDeleteSuccess": {
+    "message": "$COUNT$ conversations deleted.",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "summaryArchiveFailed": {
+    "message": "$DONE$ archived, $FAILED$ failed. Failed items remain selected.",
+    "placeholders": {
+      "done": {
+        "content": "$1",
+        "example": "1"
+      },
+      "failed": {
+        "content": "$2",
+        "example": "1"
+      }
+    }
+  },
+  "summaryDeleteFailed": {
+    "message": "$DONE$ deleted, $FAILED$ failed. Failed items remain selected.",
+    "placeholders": {
+      "done": {
+        "content": "$1",
+        "example": "1"
+      },
+      "failed": {
+        "content": "$2",
+        "example": "1"
+      }
+    }
+  }
+}
