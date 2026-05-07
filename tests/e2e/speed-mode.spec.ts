@@ -66,7 +66,7 @@ test("speed mode hides old ChatGPT turns and reveals them without reload", async
   await page.addScriptTag({ path: resolve("dist/assets/content.js") });
   await page.waitForSelector("html[data-gptbd-ready='true']");
 
-  await expect(page.getByText("20 hidden · 10 shown · initial 10")).toBeVisible();
+  await expect(page.getByText("20 older collapsed · 10 shown")).toBeVisible();
   await expect(page.locator("section[data-gptbd-speed-hidden='true']")).toHaveCount(20);
   await expect(
     page.locator("section[data-testid^='conversation-turn-']:not([data-gptbd-speed-hidden='true'])")
@@ -78,7 +78,7 @@ test("speed mode hides old ChatGPT turns and reveals them without reload", async
   await expect(
     page.locator("section[data-testid^='conversation-turn-']:not([data-gptbd-speed-hidden='true'])")
   ).toHaveCount(15);
-  await expect(page.getByText("15 hidden · 15 shown · initial 10")).toBeVisible();
+  await expect(page.getByText("15 older collapsed · 15 shown")).toBeVisible();
   await expect.poll(() => apiCalls).toBe(1);
 
   await page.locator("#prompt-textarea").fill("");
@@ -87,7 +87,7 @@ test("speed mode hides old ChatGPT turns and reveals them without reload", async
   await expect(
     page.locator("section[data-testid^='conversation-turn-']:not([data-gptbd-speed-hidden='true'])")
   ).toHaveCount(20);
-  await expect(page.getByText("10 hidden · 20 shown · initial 10")).toBeVisible();
+  await expect(page.getByText("10 older collapsed · 20 shown")).toBeVisible();
   await expect.poll(() => apiCalls).toBe(1);
 
   await page.getByRole("button", { name: "Load 5 more" }).click();
@@ -95,7 +95,7 @@ test("speed mode hides old ChatGPT turns and reveals them without reload", async
   await expect(
     page.locator("section[data-testid^='conversation-turn-']:not([data-gptbd-speed-hidden='true'])")
   ).toHaveCount(25);
-  await expect(page.getByText("5 hidden · 25 shown · initial 10")).toBeVisible();
+  await expect(page.getByText("5 older collapsed · 25 shown")).toBeVisible();
   await expect.poll(() => apiCalls).toBe(1);
 
   await page.getByRole("button", { name: "View all" }).click();
@@ -103,7 +103,7 @@ test("speed mode hides old ChatGPT turns and reveals them without reload", async
   await expect(
     page.locator("section[data-testid^='conversation-turn-']:not([data-gptbd-speed-hidden='true'])")
   ).toHaveCount(30);
-  await expect(page.getByText("0 hidden · 30 shown · initial 10")).toBeVisible();
+  await expect(page.getByText("0 older collapsed · 30 shown")).toBeVisible();
   await expect(page.getByRole("button", { name: "All shown" })).toBeDisabled();
   await expect.poll(() => apiCalls).toBe(1);
 });

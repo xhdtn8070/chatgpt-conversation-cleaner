@@ -75,10 +75,15 @@ h1 {
 }
 
 .switch {
+  --switch-track-width: 48px;
+  --switch-track-height: 28px;
+  --switch-thumb-size: 24px;
+  --switch-thumb-inset: 2px;
+  --switch-thumb-travel: 20px;
   position: relative;
   display: inline-flex;
-  width: 48px;
-  height: 28px;
+  width: var(--switch-track-width);
+  height: var(--switch-track-height);
   flex: 0 0 auto;
 }
 
@@ -91,33 +96,36 @@ h1 {
 .switch span {
   width: 100%;
   height: 100%;
-  border: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
+  border: 0;
   border-radius: 999px;
   background: color-mix(in srgb, CanvasText 8%, Canvas);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, CanvasText 12%, transparent);
   cursor: pointer;
-  transition: background-color 140ms ease, border-color 140ms ease;
+  transition: background-color 140ms ease, box-shadow 140ms ease;
 }
 
 .switch span::after {
   content: "";
   position: absolute;
-  top: 4px;
-  left: 4px;
-  width: 20px;
-  height: 20px;
+  top: 50%;
+  left: var(--switch-thumb-inset);
+  width: var(--switch-thumb-size);
+  height: var(--switch-thumb-size);
   border-radius: 50%;
-  background: Canvas;
+  background: CanvasText;
   box-shadow: 0 1px 4px color-mix(in srgb, CanvasText 18%, transparent);
-  transition: transform 140ms ease;
+  transform: translateY(-50%);
+  transition: transform 140ms ease, background-color 140ms ease;
 }
 
 .switch input:checked + span {
-  border-color: #0f7a55;
   background: #0f7a55;
+  box-shadow: inset 0 0 0 1px #0f7a55;
 }
 
 .switch input:checked + span::after {
-  transform: translateX(20px);
+  transform: translate(var(--switch-thumb-travel), -50%);
+  background: Canvas;
 }
 
 .switch input:focus-visible + span {
@@ -296,35 +304,46 @@ button:disabled {
 }
 
 .mini-switch {
+  --switch-track-width: 52px;
+  --switch-track-height: 30px;
+  --switch-thumb-size: 26px;
+  --switch-thumb-inset: 2px;
+  --switch-thumb-travel: 22px;
   position: relative;
-  width: 52px;
-  min-width: 52px;
-  min-height: 30px;
+  width: var(--switch-track-width);
+  height: var(--switch-track-height);
+  min-width: var(--switch-track-width);
+  min-height: var(--switch-track-height);
   padding: 0;
+  border: 0;
   border-radius: 999px;
   background: color-mix(in srgb, CanvasText 9%, Canvas);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, CanvasText 12%, transparent);
+  line-height: 0;
+  transition: background-color 140ms ease, box-shadow 140ms ease;
 }
 
 .mini-switch span {
   position: absolute;
-  top: 4px;
-  left: 4px;
-  width: 22px;
-  height: 22px;
+  top: 50%;
+  left: var(--switch-thumb-inset);
+  width: var(--switch-thumb-size);
+  height: var(--switch-thumb-size);
   margin: 0;
   border-radius: 999px;
   background: CanvasText;
   box-shadow: 0 1px 5px color-mix(in srgb, CanvasText 22%, transparent);
+  transform: translateY(-50%);
   transition: transform 140ms ease, background-color 140ms ease;
 }
 
 .mini-switch[aria-checked="true"] {
-  border-color: #0f7a55;
   background: #0f7a55;
+  box-shadow: inset 0 0 0 1px #0f7a55;
 }
 
 .mini-switch[aria-checked="true"] span {
-  transform: translateX(22px);
+  transform: translate(var(--switch-thumb-travel), -50%);
   background: Canvas;
 }
 

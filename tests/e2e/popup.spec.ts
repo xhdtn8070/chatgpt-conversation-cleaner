@@ -135,12 +135,12 @@ test("popup switches between Korean and English UI", async ({ page }) => {
     "aria-checked",
     "true"
   );
-  await expect(page.getByText("Initial 10 · Load 5 each")).toBeVisible();
+  await expect(page.getByText("Recent 10 · Load 5 each")).toBeVisible();
   await expect(page.getByRole("region", { name: "Speed mode settings" })).toBeVisible();
-  await page.getByLabel("Initial messages").fill("12");
+  await page.getByLabel("Recent messages").fill("12");
   await page.getByLabel("Load more size").fill("3");
   await page.getByRole("button", { name: "Save" }).click();
-  await expect(page.getByText("Initial 12 · Load 3 each")).toBeVisible();
+  await expect(page.getByText("Recent 12 · Load 3 each")).toBeVisible();
   await expect(page.getByText("Saved")).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.__popupStorage["gptbd.speedMode"])).toBe(true);
   await expect.poll(() => page.evaluate(() => window.__popupStorage["gptbd.speedVisibleMessages"])).toBe(12);

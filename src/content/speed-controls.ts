@@ -232,8 +232,7 @@ export class SpeedControls {
     if (summary) {
       summary.textContent = t("speedHiddenSummary", {
         hidden: hiddenRemaining,
-        visible: shownCount,
-        initial: this.settings.visibleMessages
+        visible: shownCount
       });
     }
 

@@ -46,11 +46,11 @@ const EN_MESSAGES = {
   },
   popupSpeedModeAria: { message: "Speed mode for long conversations" },
   popupSpeedSummary: {
-    message: "Initial $visible · Load $batch each",
+    message: "Recent $visible · Load $batch each",
     placeholders: ["visible", "batch"]
   },
   popupSpeedSettingsAria: { message: "Speed mode settings" },
-  popupSpeedVisibleLabel: { message: "Initial messages" },
+  popupSpeedVisibleLabel: { message: "Recent messages" },
   popupSpeedBatchLabel: { message: "Load more size" },
   popupSpeedSave: { message: "Save" },
   popupSpeedSaved: { message: "Saved" },
@@ -104,11 +104,11 @@ const KO_MESSAGES: Record<MessageKey, MessageDefinition> = {
   popupSpeedModeHint: { message: "긴 대화는 최근 메시지를 먼저 보여줍니다." },
   popupSpeedModeAria: { message: "긴 대화 속도 모드" },
   popupSpeedSummary: {
-    message: "초기 $visible개 · 더보기 $batch개씩",
+    message: "최근 $visible개 · 더보기 $batch개씩",
     placeholders: ["visible", "batch"]
   },
   popupSpeedSettingsAria: { message: "속도 모드 설정" },
-  popupSpeedVisibleLabel: { message: "초기 표시" },
+  popupSpeedVisibleLabel: { message: "최근 표시" },
   popupSpeedBatchLabel: { message: "더보기 개수" },
   popupSpeedSave: { message: "저장" },
   popupSpeedSaved: { message: "저장됨" },
