@@ -12,16 +12,13 @@ export default defineConfig({
     rollupOptions: {
       input: {
         popup: resolve(rootDir, "popup.html"),
-        speedMain: resolve(rootDir, "src/content/speed-main.ts"),
         content: resolve(rootDir, "src/content/main.ts")
       },
       output: {
         entryFileNames: (chunk) =>
           chunk.name === "content"
             ? "assets/content.js"
-            : chunk.name === "speedMain"
-              ? "assets/speed-main.js"
-              : "assets/[name].js",
+            : "assets/[name].js",
         chunkFileNames: "assets/[name].js",
         assetFileNames: "assets/[name][extname]",
         manualChunks: undefined

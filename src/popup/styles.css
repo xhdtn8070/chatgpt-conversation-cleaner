@@ -129,6 +129,7 @@ h1 {
   display: grid;
   grid-template-columns: 1.4fr 0.8fr 0.8fr;
   gap: 1px;
+  margin-top: 12px;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
   border-radius: 8px;
@@ -188,9 +189,9 @@ strong {
 }
 
 .nested-row {
-  margin-left: 12px;
-  padding-left: 12px;
-  border-left-color: color-mix(in srgb, #0f7a55 36%, transparent);
+  padding-left: 14px;
+  border-left: 3px solid color-mix(in srgb, #0f7a55 42%, transparent);
+  background: color-mix(in srgb, CanvasText 3%, Canvas);
 }
 
 .feature-section {
@@ -221,7 +222,7 @@ strong {
 
 .speed-settings {
   display: grid;
-  grid-template-columns: 1fr 1fr auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: end;
   gap: 8px;
   margin-top: 8px;
@@ -261,7 +262,7 @@ strong {
 }
 
 .saved-status {
-  grid-column: 1 / -1;
+  align-self: center;
   min-height: 14px;
   color: #0f7a55;
   font-size: 11px;
@@ -335,11 +336,11 @@ button:disabled {
 }
 
 @media (max-width: 340px) {
-  .speed-settings {
-    grid-template-columns: 1fr 1fr;
+  .speed-settings button {
+    grid-column: 1 / -1;
   }
 
-  .speed-settings button {
+  .saved-status {
     grid-column: 1 / -1;
   }
 }

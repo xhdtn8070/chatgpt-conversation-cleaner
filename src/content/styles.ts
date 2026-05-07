@@ -347,6 +347,10 @@ html.gptbd-bulk-active [data-gptbd-force-menu="true"] button[aria-label*="option
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
 }
 
+.gptbd-speed-hidden {
+  display: none !important;
+}
+
 .gptbd-speed-toolbar {
   display: flex !important;
   align-items: center !important;

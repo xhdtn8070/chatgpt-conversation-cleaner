@@ -42,7 +42,7 @@ const EN_MESSAGES = {
   popupSidebarPanelAria: { message: "Show sidebar bulk controls" },
   popupSpeedModeLabel: { message: "Speed mode" },
   popupSpeedModeHint: {
-    message: "Open long chats with only recent messages rendered first."
+    message: "Keep long chats focused on recent messages first."
   },
   popupSpeedModeAria: { message: "Speed mode for long conversations" },
   popupSpeedSummary: {
@@ -101,7 +101,7 @@ const KO_MESSAGES: Record<MessageKey, MessageDefinition> = {
   popupSidebarPanelHint: { message: "ChatGPT 사이드바 안에 일괄 컨트롤을 표시합니다." },
   popupSidebarPanelAria: { message: "좌측 일괄 컨트롤 표시" },
   popupSpeedModeLabel: { message: "속도 모드" },
-  popupSpeedModeHint: { message: "긴 대화는 최근 메시지만 먼저 렌더링합니다." },
+  popupSpeedModeHint: { message: "긴 대화는 최근 메시지를 먼저 보여줍니다." },
   popupSpeedModeAria: { message: "긴 대화 속도 모드" },
   popupSpeedSummary: {
     message: "초기 $visible개 · 더보기 $batch개씩",

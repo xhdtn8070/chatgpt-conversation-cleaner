@@ -65,10 +65,7 @@ const EN_MESSAGES = {
   },
   speedLoadMore: { message: "Load $count more", placeholders: ["count"] },
   speedViewAll: { message: "View all" },
-  speedAllShown: { message: "All shown" },
-  speedRerenderBlocked: {
-    message: "Finish the active draft or response before loading more."
-  }
+  speedAllShown: { message: "All shown" }
 } as const satisfies Record<string, MessageDefinition>;
 
 export type MessageKey = keyof typeof EN_MESSAGES;
@@ -131,10 +128,7 @@ const KO_MESSAGES: Record<MessageKey, MessageDefinition> = {
   },
   speedLoadMore: { message: "$count개 더 보기", placeholders: ["count"] },
   speedViewAll: { message: "전체 보기" },
-  speedAllShown: { message: "모두 표시됨" },
-  speedRerenderBlocked: {
-    message: "작성 중인 프롬프트나 응답이 끝난 뒤 더 보기를 사용할 수 있습니다."
-  }
+  speedAllShown: { message: "모두 표시됨" }
 };
 
 let activeLanguage = getDefaultLanguage();

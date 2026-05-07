@@ -6,11 +6,11 @@
 
 <p align="center">
   A Manifest V3 Chrome extension that adds stable bulk cleanup and long-chat speed controls to ChatGPT.
-  Select conversations safely, archive/delete them with confirmation, and open long threads with fewer messages rendered first.
+  Select conversations safely, archive/delete them with confirmation, and keep long threads focused on recent messages first.
 </p>
 
 <p align="center">
-  <strong>API-first cleanup</strong> · <strong>Long-chat trim mode</strong> · <strong>No third-party servers</strong>
+  <strong>API-first cleanup</strong> · <strong>Long-chat speed mode</strong> · <strong>No third-party servers</strong>
 </p>
 
 ![Conversation Cleaner sidebar mockup](docs/ux-mockup.png)
@@ -47,12 +47,11 @@ The goal is a calmer cleanup flow:
 
 - Optional Speed mode toggle in the popup.
 - Configurable initial render count and load-more batch size when Speed mode is enabled.
-- MAIN-world `fetch` interception at `document_start` for ChatGPT conversation detail API responses.
-- Keeps only the latest 10 messages in ChatGPT's native render path by default.
-- Keeps the original response in page memory only, so `Load 5 more` can ask ChatGPT's own React UI to render more cached messages without another API call.
-- `View all` re-renders the full cached conversation in the existing page without a hard reload.
-- Blocks soft re-render actions while a prompt draft exists or a response is actively generating.
-- Page-memory cache is cleared by refresh, tab close, or navigation away from the current page context.
+- DOM-based virtualization that hides older ChatGPT message turns immediately after they appear.
+- Keeps the latest 10 messages visible by default and leaves older turns in the page as hidden native DOM.
+- `Load 5 more` and `View all` reveal existing ChatGPT DOM in place without route changes, fixed coordinates, or page refreshes.
+- Scroll anchoring keeps the current reading position stable when older messages are revealed.
+- Speed mode does not patch ChatGPT's private conversation fetch response.
 
 ## Safety Model
 
@@ -66,7 +65,7 @@ The action order is:
 2. If the API is unavailable, use scoped UI fallback.
 3. If one item fails, stop the batch and keep the remaining items selected.
 
-Speed mode is separate from cleanup actions. It trims only ChatGPT conversation detail fetch responses and does not modify archive/delete requests.
+Speed mode is separate from cleanup actions. It only hides or reveals ChatGPT's existing message turn elements and does not modify archive/delete requests.
 
 ## Install Locally
 
@@ -98,7 +97,7 @@ Useful scripts:
 
 - `npm run icons`: render PNG icon sizes from `public/icons/icon.svg`.
 - `npm run build`: build the unpacked extension into `dist/`.
-- `npm run test`: run unit tests for parsing, selection, positioning, and conversation trimming.
+- `npm run test`: run unit tests for parsing, selection, and positioning.
 - `npm run test:browser`: run Playwright coverage against the mock ChatGPT sidebar and long-chat fixture.
 
 ## Project Structure
@@ -117,7 +116,7 @@ docs/ux-mockup.png         UX direction mockup
 
 ## Privacy
 
-This extension runs locally in the browser. It does not send conversation data to third-party servers. Selected conversation IDs are used only against ChatGPT's own same-origin web API or ChatGPT's visible UI controls. Speed mode keeps the current conversation response only in the page's JavaScript memory so more messages can be rendered from cache without another request; a refresh clears it. See [PRIVACY.md](PRIVACY.md).
+This extension runs locally in the browser. It does not send conversation data to third-party servers. Selected conversation IDs are used only against ChatGPT's own same-origin web API or ChatGPT's visible UI controls. Speed mode hides and reveals existing ChatGPT message DOM locally; speed counts stay local in browser storage. See [PRIVACY.md](PRIVACY.md).
 
 ## License
 

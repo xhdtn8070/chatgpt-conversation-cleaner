@@ -11,48 +11,20 @@ export type SpeedSettings = {
 };
 
 const CONTENT_SOURCE = "gptbd-content";
-const PAGE_SOURCE = "gptbd-main";
-const REQUEST_TIMEOUT_MS = 1200;
 const CONVERSATION_PATH = /\/c\/([^/?#]+)/;
-const MESSAGE_SELECTOR = 'main section[data-testid^="conversation-turn-"]';
-const COMPOSER_SELECTOR = [
-  "#prompt-textarea",
-  "[data-testid='prompt-textarea']",
-  "form textarea",
-  "form [contenteditable='true']"
+const MESSAGE_SELECTOR = [
+  'main article[data-testid^="conversation-turn-"]',
+  'main section[data-testid^="conversation-turn-"]',
+  'main div[data-testid^="conversation-turn-"]'
 ].join(",");
-const GENERATING_SELECTOR = [
-  "[data-testid='stop-button']",
-  "button[aria-label*='Stop' i]",
-  "button[aria-label*='중지']",
-  "main [aria-busy='true']",
-  "main [data-is-streaming='true']"
-].join(",");
+const HIDDEN_ATTR = "data-gptbd-speed-hidden";
+const HIDDEN_CLASS = "gptbd-speed-hidden";
+const PANEL_CLASS = "gptbd-speed-panel";
 
-type SpeedStatus = {
-  cacheReady: boolean;
-  enabled: boolean;
-  conversationId?: string;
-  totalVisible?: number;
-  nativeVisible?: number;
-  hiddenVisible?: number;
-  nativeStartIndex?: number;
-  visibleMessages: number;
-  targetVisibleMessages?: number;
-  batchMessages: number;
-  trimmed?: boolean;
-};
-
-type SpeedResponse = {
-  source?: string;
-  type?: string;
-  requestId?: string;
-  payload?: unknown;
-};
-
-type PendingRequest = {
-  resolve: (payload: unknown) => void;
-  timeout: number;
+type AnchorSnapshot = {
+  element: HTMLElement;
+  top: number;
+  scroller: HTMLElement | Window;
 };
 
 export class SpeedControls {
@@ -62,19 +34,17 @@ export class SpeedControls {
   private currentConversationId: string | null = null;
   private root: HTMLElement | null = null;
   private mutationObserver: MutationObserver | null = null;
-  private pending = new Map<string, PendingRequest>();
   private refreshQueued = false;
   private lastUrl = window.location.href;
   private urlPoll: number | null = null;
-  private noticeText: string | null = null;
-  private noticeTimeout: number | null = null;
+  private visibleLimits = new Map<string, number>();
+  private historyPatched = false;
 
   init(enabled: boolean, language: LanguageCode, settings: SpeedSettings): void {
     this.enabled = enabled;
     this.language = language;
     this.settings = settings;
     this.writeBridge();
-    this.bindPageMessages();
     this.bindObservers();
     this.scheduleRefresh();
   }
@@ -87,25 +57,12 @@ export class SpeedControls {
     this.enabled = enabled;
     this.writeBridge();
 
-    if (!isConversationPage()) {
-      this.cleanup();
-      return;
-    }
-
-    const status = await this.requestStatus().catch(() => null);
-
     if (enabled) {
-      await this.softRerenderConversation();
       this.scheduleRefresh();
       return;
     }
 
-    this.cleanup();
-
-    if (status?.cacheReady && canSoftRerenderConversation()) {
-      await this.setNativeVisibleCount(status.totalVisible ?? status.nativeVisible ?? this.settings.visibleMessages);
-      await this.softRerenderConversation();
-    }
+    this.cleanup(true);
   }
 
   setLanguage(language: LanguageCode): void {
@@ -114,8 +71,15 @@ export class SpeedControls {
   }
 
   setSettings(settings: SpeedSettings): void {
+    const visibleCountChanged = settings.visibleMessages !== this.settings.visibleMessages;
+
     this.settings = settings;
     this.writeBridge();
+
+    if (visibleCountChanged) {
+      this.visibleLimits.clear();
+    }
+
     this.scheduleRefresh();
   }
 
@@ -123,44 +87,28 @@ export class SpeedControls {
     return this.enabled;
   }
 
-  private bindPageMessages(): void {
-    window.addEventListener("message", (event: MessageEvent<SpeedResponse>) => {
-      if (event.source !== window || event.data?.source !== PAGE_SOURCE) {
-        return;
-      }
-
-      const requestId = event.data.requestId;
-
-      if (!requestId) {
-        return;
-      }
-
-      const pending = this.pending.get(requestId);
-
-      if (!pending) {
-        return;
-      }
-
-      window.clearTimeout(pending.timeout);
-      this.pending.delete(requestId);
-      pending.resolve(event.data.payload);
-    });
-  }
-
   private bindObservers(): void {
-    this.mutationObserver = new MutationObserver((mutations) => {
-      if (mutations.every((mutation) => this.isOwnMutation(mutation))) {
-        return;
-      }
+    if (!this.mutationObserver) {
+      this.mutationObserver = new MutationObserver((mutations) => {
+        if (mutations.every((mutation) => this.isOwnMutation(mutation))) {
+          return;
+        }
 
-      this.scheduleRefresh();
-    });
-    this.mutationObserver.observe(document.body, { childList: true, subtree: true });
-    window.addEventListener("gptbd-speed-cache-updated", () => this.scheduleRefresh());
-    window.addEventListener("popstate", () => this.handleUrlMaybeChanged());
-    this.patchHistoryMethod("pushState");
-    this.patchHistoryMethod("replaceState");
-    this.urlPoll = window.setInterval(() => this.handleUrlMaybeChanged(), 500);
+        this.scheduleRefresh();
+      });
+      this.mutationObserver.observe(document.body, { childList: true, subtree: true });
+    }
+
+    if (!this.historyPatched) {
+      window.addEventListener("popstate", () => this.handleUrlMaybeChanged());
+      this.patchHistoryMethod("pushState");
+      this.patchHistoryMethod("replaceState");
+      this.historyPatched = true;
+    }
+
+    if (!this.urlPoll) {
+      this.urlPoll = window.setInterval(() => this.handleUrlMaybeChanged(), 500);
+    }
   }
 
   private patchHistoryMethod(method: "pushState" | "replaceState"): void {
@@ -179,7 +127,7 @@ export class SpeedControls {
 
     this.lastUrl = window.location.href;
     this.currentConversationId = null;
-    this.cleanup();
+    this.cleanup(false);
     this.scheduleRefresh();
   }
 
@@ -189,61 +137,91 @@ export class SpeedControls {
     }
 
     this.refreshQueued = true;
-    window.requestAnimationFrame(() => {
+    queueMicrotask(() => {
       this.refreshQueued = false;
-      void this.refresh();
+      this.refresh(false);
     });
   }
 
-  private async refresh(): Promise<void> {
-    if (!this.enabled || !isConversationPage()) {
-      this.cleanup();
+  private refresh(preserveAnchor: boolean): void {
+    if (!this.enabled) {
+      this.cleanup(true);
       return;
     }
 
-    const status = await this.requestStatus().catch(() => null);
-
-    if (
-      !status?.cacheReady ||
-      !status.conversationId ||
-      (status.totalVisible ?? 0) <= status.visibleMessages
-    ) {
-      this.cleanup();
+    if (!isConversationPage()) {
+      this.cleanup(false);
       return;
     }
 
-    if (this.currentConversationId !== status.conversationId) {
-      this.currentConversationId = status.conversationId;
+    const conversationId = getConversationIdFromLocation();
+    const messages = queryMessages();
+
+    if (!conversationId || messages.length === 0) {
+      this.cleanup(false);
+      return;
     }
 
-    await this.render(status);
+    if (this.currentConversationId !== conversationId) {
+      this.currentConversationId = conversationId;
+    }
+
+    const visibleLimit = this.getVisibleLimit(conversationId, messages.length);
+    this.applyVisibility(messages, visibleLimit, preserveAnchor);
+    this.render(messages, visibleLimit);
   }
 
-  private async render(status: SpeedStatus): Promise<void> {
-    const firstMessage = document.querySelector<HTMLElement>(MESSAGE_SELECTOR);
-    const container = firstMessage?.parentElement;
+  private getVisibleLimit(conversationId: string, totalMessages: number): number {
+    const storedLimit = this.visibleLimits.get(conversationId);
+    const rawLimit = storedLimit ?? this.settings.visibleMessages;
+    const nextLimit = clampNumber(rawLimit, 1, Math.max(1, totalMessages), this.settings.visibleMessages);
 
-    if (!container) {
-      this.cleanup();
-      return;
+    if (storedLimit && storedLimit !== nextLimit) {
+      this.visibleLimits.set(conversationId, nextLimit);
     }
 
-    const nativeMessageCount = countNativeMessages();
-    const totalVisible = Math.max(status.totalVisible ?? 0, nativeMessageCount);
-    const statusVisible = status.targetVisibleMessages ?? status.nativeVisible ?? this.settings.visibleMessages;
-    const nativeVisible = Math.min(
-      totalVisible,
-      nativeMessageCount > 0 ? nativeMessageCount : statusVisible
-    );
-    const hiddenRemaining = Math.max(0, totalVisible - nativeVisible);
-    const batchSize = Math.min(status.batchMessages, hiddenRemaining);
+    return nextLimit;
+  }
+
+  private applyVisibility(
+    messages: HTMLElement[],
+    visibleLimit: number,
+    preserveAnchor: boolean
+  ): void {
+    const snapshot = preserveAnchor ? captureAnchor(messages) : null;
+    const hiddenCount = Math.max(0, messages.length - visibleLimit);
+
+    messages.forEach((message, index) => {
+      if (index < hiddenCount) {
+        hideMessage(message);
+        return;
+      }
+
+      showMessage(message);
+    });
+
+    restoreAnchor(snapshot);
+  }
+
+  private render(messages: HTMLElement[], visibleLimit: number): void {
+    const totalMessages = messages.length;
+    const hiddenRemaining = Math.max(0, totalMessages - visibleLimit);
+    const shownCount = totalMessages - hiddenRemaining;
+    const batchSize = Math.min(this.settings.batchMessages, hiddenRemaining);
+    const firstVisibleMessage = messages[hiddenRemaining] ?? messages[0];
+    const container = firstVisibleMessage?.parentElement;
+
+    if (!container || !firstVisibleMessage) {
+      this.cleanup(false);
+      return;
+    }
 
     if (!this.root) {
       this.root = this.createRoot();
     }
 
-    if (this.root.parentElement !== container || this.root.nextSibling !== firstMessage) {
-      container.insertBefore(this.root, firstMessage);
+    if (this.root.parentElement !== container || this.root.nextSibling !== firstVisibleMessage) {
+      container.insertBefore(this.root, firstVisibleMessage);
     }
 
     const toolbar = this.root.querySelector<HTMLElement>(".gptbd-speed-toolbar");
@@ -252,18 +230,16 @@ export class SpeedControls {
     const viewAll = this.root.querySelector<HTMLButtonElement>(".gptbd-speed-view-all");
 
     if (summary) {
-      summary.textContent =
-        this.noticeText ??
-        t("speedHiddenSummary", {
-          hidden: hiddenRemaining,
-          visible: nativeVisible,
-          initial: status.visibleMessages
-        });
+      summary.textContent = t("speedHiddenSummary", {
+        hidden: hiddenRemaining,
+        visible: shownCount,
+        initial: this.settings.visibleMessages
+      });
     }
 
     if (toolbar) {
       toolbar.setAttribute("lang", this.language);
-      toolbar.toggleAttribute("data-notice", Boolean(this.noticeText));
+      toolbar.removeAttribute("data-notice");
     }
 
     if (loadMore) {
@@ -280,7 +256,7 @@ export class SpeedControls {
 
   private createRoot(): HTMLElement {
     const root = document.createElement("div");
-    root.className = "gptbd-speed-panel";
+    root.className = PANEL_CLASS;
 
     const toolbar = document.createElement("div");
     toolbar.className = "gptbd-speed-toolbar";
@@ -295,14 +271,14 @@ export class SpeedControls {
     loadMore.type = "button";
     loadMore.className = "gptbd-speed-load-more";
     loadMore.addEventListener("click", () => {
-      void this.handleLoadMore();
+      this.handleLoadMore();
     });
 
     const viewAll = document.createElement("button");
     viewAll.type = "button";
     viewAll.className = "gptbd-speed-view-all";
     viewAll.addEventListener("click", () => {
-      void this.handleViewAll();
+      this.handleViewAll();
     });
 
     actions.append(loadMore, viewAll);
@@ -311,154 +287,71 @@ export class SpeedControls {
     return root;
   }
 
-  private async handleLoadMore(): Promise<void> {
-    const status = await this.requestStatus().catch(() => null);
+  private handleLoadMore(): void {
+    const conversationId = getConversationIdFromLocation();
+    const messages = queryMessages();
 
-    if (!status?.cacheReady) {
+    if (!this.enabled || !conversationId || messages.length === 0) {
       return;
     }
 
-    const totalVisible = status.totalVisible ?? countNativeMessages();
-    const currentVisible = Math.max(countNativeMessages(), status.nativeVisible ?? 0);
-    const nextVisible = Math.min(totalVisible, currentVisible + status.batchMessages);
+    const currentVisible = this.getVisibleLimit(conversationId, messages.length);
+    const nextVisible = Math.min(messages.length, currentVisible + this.settings.batchMessages);
 
     if (nextVisible <= currentVisible) {
       return;
     }
 
-    if (!canSoftRerenderConversation()) {
-      this.showNotice(t("speedRerenderBlocked"));
-      return;
-    }
-
-    await this.setNativeVisibleCount(nextVisible);
-    await this.softRerenderConversation();
-    this.scheduleRefresh();
+    this.visibleLimits.set(conversationId, nextVisible);
+    this.refresh(true);
   }
 
-  private async handleViewAll(): Promise<void> {
-    const status = await this.requestStatus().catch(() => null);
+  private handleViewAll(): void {
+    const conversationId = getConversationIdFromLocation();
+    const messages = queryMessages();
 
-    if (!status?.cacheReady) {
+    if (!this.enabled || !conversationId || messages.length === 0) {
       return;
     }
 
-    if (!canSoftRerenderConversation()) {
-      this.showNotice(t("speedRerenderBlocked"));
-      return;
-    }
-
-    await this.setNativeVisibleCount(status.totalVisible ?? status.nativeVisible ?? countNativeMessages());
-    await this.softRerenderConversation();
-    this.scheduleRefresh();
+    this.visibleLimits.set(conversationId, messages.length);
+    this.refresh(true);
   }
 
-  private cleanup(): void {
+  private cleanup(restoreMessages: boolean): void {
     this.root?.remove();
     this.root = null;
+
+    if (restoreMessages) {
+      this.restoreManagedMessages();
+    }
   }
 
-  private showNotice(message: string): void {
-    this.noticeText = message;
-
-    if (this.noticeTimeout) {
-      window.clearTimeout(this.noticeTimeout);
-    }
-
-    this.noticeTimeout = window.setTimeout(() => {
-      this.noticeText = null;
-      this.noticeTimeout = null;
-      this.scheduleRefresh();
-    }, 3600);
-    this.scheduleRefresh();
+  private restoreManagedMessages(): void {
+    document.querySelectorAll<HTMLElement>(`[${HIDDEN_ATTR}="true"]`).forEach(showMessage);
   }
 
   private isOwnMutation(mutation: MutationRecord): boolean {
-    if (!this.root) {
-      return false;
-    }
-
     const nodes = [...Array.from(mutation.addedNodes), ...Array.from(mutation.removedNodes)];
 
     return (
-      this.root.contains(mutation.target) ||
-      nodes.some((node) => node === this.root || this.root?.contains(node))
+      Boolean(this.root && (mutation.target === this.root || this.root.contains(mutation.target))) ||
+      nodes.some((node) => isSpeedPanelNode(node))
     );
-  }
-
-  private async requestStatus(): Promise<SpeedStatus> {
-    const payload = await this.requestPage("GPTBD_SPEED_GET_STATUS", {
-      conversationId: getConversationIdFromLocation()
-    });
-    return payload as SpeedStatus;
-  }
-
-  private async setNativeVisibleCount(visibleMessages: number): Promise<SpeedStatus> {
-    const payload = await this.requestPage("GPTBD_SPEED_SET_VISIBLE_COUNT", {
-      conversationId: getConversationIdFromLocation(),
-      visibleMessages
-    });
-    return payload as SpeedStatus;
-  }
-
-  private async softRerenderConversation(): Promise<boolean> {
-    const conversationPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-
-    if (!isConversationPage()) {
-      return false;
-    }
-
-    if (!canSoftRerenderConversation()) {
-      this.showNotice(t("speedRerenderBlocked"));
-      return false;
-    }
-
-    try {
-      history.replaceState(history.state, "", `/?gptbd-speed-rerender=${Date.now()}`);
-      window.dispatchEvent(new PopStateEvent("popstate", { state: history.state }));
-      await delay(80);
-    } finally {
-      history.replaceState(history.state, "", conversationPath);
-      window.dispatchEvent(new PopStateEvent("popstate", { state: history.state }));
-      await delay(180);
-    }
-
-    return true;
-  }
-
-  private requestPage(type: string, payload: Record<string, unknown>): Promise<unknown> {
-    const requestId = `gptbd-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-
-    return new Promise((resolve, reject) => {
-      const timeout = window.setTimeout(() => {
-        this.pending.delete(requestId);
-        reject(new Error(`Timed out waiting for ${type}`));
-      }, REQUEST_TIMEOUT_MS);
-
-      this.pending.set(requestId, { resolve, timeout });
-      window.postMessage(
-        {
-          source: CONTENT_SOURCE,
-          type,
-          requestId,
-          ...payload
-        },
-        "*"
-      );
-    });
   }
 
   private writeBridge(): void {
     const settings = {
-      enabled: this.enabled,
+      enabled: false,
       visibleMessages: this.settings.visibleMessages,
-      batchMessages: this.settings.batchMessages
+      batchMessages: this.settings.batchMessages,
+      mode: "dom-hide"
     };
 
     try {
       localStorage.setItem(SPEED_BRIDGE_KEY, JSON.stringify(settings));
     } catch {
-      // Keep the runtime message path working even if localStorage is blocked.
+      // Keep runtime behavior in-memory if localStorage is blocked.
     }
 
     window.postMessage(
@@ -472,6 +365,105 @@ export class SpeedControls {
   }
 }
 
+function queryMessages(): HTMLElement[] {
+  const seen = new Set<HTMLElement>();
+
+  return Array.from(document.querySelectorAll<HTMLElement>(MESSAGE_SELECTOR)).filter((element) => {
+    if (seen.has(element) || element.closest(`.${PANEL_CLASS}`)) {
+      return false;
+    }
+
+    if (element.parentElement?.closest(MESSAGE_SELECTOR)) {
+      return false;
+    }
+
+    seen.add(element);
+    return true;
+  });
+}
+
+function hideMessage(element: HTMLElement): void {
+  if (element.getAttribute(HIDDEN_ATTR) === "true") {
+    return;
+  }
+
+  element.classList.add(HIDDEN_CLASS);
+  element.setAttribute(HIDDEN_ATTR, "true");
+  element.setAttribute("aria-hidden", "true");
+}
+
+function showMessage(element: HTMLElement): void {
+  if (element.getAttribute(HIDDEN_ATTR) !== "true") {
+    return;
+  }
+
+  element.classList.remove(HIDDEN_CLASS);
+  element.removeAttribute(HIDDEN_ATTR);
+  element.removeAttribute("aria-hidden");
+}
+
+function captureAnchor(messages: HTMLElement[]): AnchorSnapshot | null {
+  const anchor =
+    messages.find((message) => !isSpeedHidden(message) && message.getBoundingClientRect().bottom > 0) ??
+    messages.find((message) => !isSpeedHidden(message));
+
+  if (!anchor) {
+    return null;
+  }
+
+  return {
+    element: anchor,
+    top: anchor.getBoundingClientRect().top,
+    scroller: findScrollContainer(anchor)
+  };
+}
+
+function restoreAnchor(snapshot: AnchorSnapshot | null): void {
+  if (!snapshot?.element.isConnected) {
+    return;
+  }
+
+  const delta = snapshot.element.getBoundingClientRect().top - snapshot.top;
+
+  if (Math.abs(delta) < 1) {
+    return;
+  }
+
+  if (snapshot.scroller instanceof Window) {
+    snapshot.scroller.scrollBy(0, delta);
+    return;
+  }
+
+  snapshot.scroller.scrollTop += delta;
+}
+
+function findScrollContainer(element: HTMLElement): HTMLElement | Window {
+  let current = element.parentElement;
+
+  while (current && current !== document.body) {
+    const style = getComputedStyle(current);
+
+    if (/(auto|scroll)/.test(style.overflowY) && current.scrollHeight > current.clientHeight + 1) {
+      return current;
+    }
+
+    current = current.parentElement;
+  }
+
+  return window;
+}
+
+function isSpeedHidden(element: HTMLElement): boolean {
+  return element.getAttribute(HIDDEN_ATTR) === "true";
+}
+
+function isSpeedPanelNode(node: Node): boolean {
+  return (
+    node instanceof HTMLElement &&
+    (node.classList.contains(PANEL_CLASS) || Boolean(node.closest(`.${PANEL_CLASS}`)))
+  );
+}
+
 function getConversationIdFromLocation(): string | null {
   return window.location.pathname.match(CONVERSATION_PATH)?.[1] ?? null;
 }
@@ -480,40 +472,8 @@ function isConversationPage(): boolean {
   return Boolean(getConversationIdFromLocation());
 }
 
-function countNativeMessages(): number {
-  return document.querySelectorAll(MESSAGE_SELECTOR).length;
-}
-
-function canSoftRerenderConversation(): boolean {
-  return !hasComposerDraftOrFocus() && !isGeneratingResponse();
-}
-
-function hasComposerDraftOrFocus(): boolean {
-  const activeElement = document.activeElement;
-
-  return Array.from(document.querySelectorAll<HTMLElement>(COMPOSER_SELECTOR)).some((element) => {
-    if (!isVisibleElement(element)) {
-      return false;
-    }
-
-    const text =
-      element instanceof HTMLTextAreaElement || element instanceof HTMLInputElement
-        ? element.value
-        : element.innerText || element.textContent || "";
-
-    return text.trim().length > 0 || (activeElement instanceof Node && element.contains(activeElement));
-  });
-}
-
-function isGeneratingResponse(): boolean {
-  return Array.from(document.querySelectorAll<HTMLElement>(GENERATING_SELECTOR)).some(isVisibleElement);
-}
-
-function isVisibleElement(element: HTMLElement): boolean {
-  const rect = element.getBoundingClientRect();
-  return rect.width > 0 && rect.height > 0 && getComputedStyle(element).visibility !== "hidden";
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
+function clampNumber(value: unknown, min: number, max: number, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.min(max, Math.max(min, Math.floor(value)))
+    : fallback;
 }
