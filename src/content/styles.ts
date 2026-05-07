@@ -87,8 +87,8 @@ export const SHADOW_CSS = `
 .action-bar {
   position: fixed;
   display: grid;
-  gap: 8px;
-  padding: 8px;
+  gap: 6px;
+  padding: 6px;
   box-sizing: border-box;
   border: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
   border-radius: 8px;
@@ -103,16 +103,16 @@ export const SHADOW_CSS = `
 
 .action-bar[data-mode="off"] {
   grid-template-rows: 1fr;
-  min-height: 44px;
+  min-height: 38px;
 }
 
 .action-bar[data-mode="on"] {
   grid-template-rows: auto auto;
-  min-height: 86px;
+  min-height: 76px;
 }
 
 .action-bar[data-mode="on"][data-density="compact"] {
-  min-height: 126px;
+  min-height: 110px;
 }
 
 .toolbar-top {
@@ -138,7 +138,7 @@ export const SHADOW_CSS = `
   flex: 1 1 auto;
   min-width: 0;
   color: CanvasText;
-  font: 700 13px/1.2 ui-sans-serif, system-ui, sans-serif;
+  font: 700 12.5px/1.2 ui-sans-serif, system-ui, sans-serif;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -148,7 +148,7 @@ export const SHADOW_CSS = `
 .dialog button {
   flex: 0 0 auto;
   min-width: 0;
-  min-height: 34px;
+  min-height: 30px;
   border: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
   border-radius: 7px;
   background: color-mix(in srgb, CanvasText 5%, Canvas);
@@ -163,10 +163,10 @@ export const SHADOW_CSS = `
 
 .mode-toggle {
   position: relative;
-  width: 62px;
-  min-width: 62px !important;
-  height: 34px;
-  min-height: 34px !important;
+  width: 44px;
+  min-width: 44px !important;
+  height: 24px;
+  min-height: 24px !important;
   border-radius: 999px !important;
   padding: 0 !important;
   background: color-mix(in srgb, CanvasText 9%, Canvas) !important;
@@ -174,10 +174,10 @@ export const SHADOW_CSS = `
 
 .mode-toggle-thumb {
   position: absolute;
-  top: 4px;
-  left: 4px;
-  width: 26px;
-  height: 26px;
+  top: 2px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
   border-radius: 999px;
   background: CanvasText;
   box-shadow: 0 1px 5px color-mix(in srgb, CanvasText 26%, transparent);
@@ -190,7 +190,7 @@ export const SHADOW_CSS = `
 }
 
 .mode-toggle[aria-checked="true"] .mode-toggle-thumb {
-  transform: translateX(28px);
+  transform: translateX(18px);
   background: Canvas;
 }
 
@@ -315,20 +315,20 @@ html.gptbd-bulk-active [data-gptbd-force-menu="true"] button[aria-label*="option
 }
 
 [data-gptbd-toolbar-spacer="true"][data-gptbd-mode="off"] {
-  flex: 0 0 44px !important;
-  height: 44px !important;
-  min-height: 44px !important;
+  flex: 0 0 48px !important;
+  height: 48px !important;
+  min-height: 48px !important;
 }
 
 [data-gptbd-toolbar-spacer="true"][data-gptbd-mode="on"] {
-  flex: 0 0 86px !important;
-  height: 86px !important;
-  min-height: 86px !important;
+  flex: 0 0 88px !important;
+  height: 88px !important;
+  min-height: 88px !important;
 }
 
 [data-gptbd-toolbar-spacer="true"][data-gptbd-mode="on"][data-gptbd-density="compact"] {
-  flex: 0 0 128px !important;
-  height: 128px !important;
-  min-height: 128px !important;
+  flex: 0 0 122px !important;
+  height: 122px !important;
+  min-height: 122px !important;
 }
 `;
