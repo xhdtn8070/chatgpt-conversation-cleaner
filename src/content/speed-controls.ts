@@ -1,5 +1,5 @@
 import { t, type LanguageCode } from "./i18n";
-import type { SpeedStrategy } from "../shared/messages";
+import type { SpeedRenderStatus } from "../shared/messages";
 
 export const SPEED_BRIDGE_KEY = "gptbd.speedBridge.v2";
 export const SPEED_DEFAULTS = {
@@ -12,6 +12,7 @@ export type SpeedSettings = {
 };
 
 const CONTENT_SOURCE = "gptbd-content";
+const PAGE_SOURCE = "gptbd-page";
 const CONVERSATION_PATH = /\/c\/([^/?#]+)/;
 const MESSAGE_SELECTOR = [
   'main article[data-testid^="conversation-turn-"]',
@@ -21,9 +22,9 @@ const MESSAGE_SELECTOR = [
 const HIDDEN_ATTR = "data-gptbd-speed-hidden";
 const HIDDEN_CLASS = "gptbd-speed-hidden";
 const PANEL_CLASS = "gptbd-speed-panel";
-const PREHIDE_ATTR = "data-gptbd-speed-prehide";
-const VISIBLE_ATTR = "data-gptbd-speed-visible";
+const TOAST_CLASS = "gptbd-speed-toast";
 const METRIC_SETTLE_MS = 350;
+const TOAST_HIDE_MS = 1600;
 
 type AnchorSnapshot = {
   element: HTMLElement;
@@ -36,11 +37,20 @@ type InitialRenderMetric = {
   ms: number;
 };
 
+type ConversationApiReadyMessage = {
+  id?: unknown;
+  source: typeof PAGE_SOURCE;
+  type: "GPTBD_CONVERSATION_API_READY";
+  conversationId: string;
+  messageCount: number;
+  visibleMessages: number;
+  readyAt: number;
+};
+
 export class SpeedControls {
   private enabled = false;
   private language: LanguageCode = "en";
   private settings: SpeedSettings = { ...SPEED_DEFAULTS };
-  private strategy: SpeedStrategy = "after-render";
   private currentConversationId: string | null = null;
   private root: HTMLElement | null = null;
   private mutationObserver: MutationObserver | null = null;
@@ -52,18 +62,27 @@ export class SpeedControls {
   private routeStartedAt = 0;
   private metricTimer: number | null = null;
   private initialRenderMetric: InitialRenderMetric | null = null;
+  private renderStatus: SpeedRenderStatus = "idle";
+  private toast: HTMLElement | null = null;
+  private toastHideTimer: number | null = null;
+  private toastConversationId: string | null = null;
+  private pageBridgeBound = false;
+  private handlePageBridgeMessage = (event: MessageEvent): void => {
+    if (event.source !== window || !isConversationApiReadyMessage(event.data)) {
+      return;
+    }
+
+    this.handleConversationApiReady(event.data);
+  };
 
   init(
     enabled: boolean,
     language: LanguageCode,
-    settings: SpeedSettings,
-    strategy: SpeedStrategy
+    settings: SpeedSettings
   ): void {
     this.enabled = enabled;
     this.language = language;
     this.settings = settings;
-    this.strategy = strategy;
-    this.applyPrehideState();
     this.writeBridge();
     this.bindObservers();
     this.scheduleRefresh();
@@ -75,31 +94,23 @@ export class SpeedControls {
     }
 
     this.enabled = enabled;
-    this.applyPrehideState();
     this.writeBridge();
 
     if (enabled) {
+      this.routeStartedAt = performance.now();
+      this.toastConversationId = null;
+      this.clearMetric();
       this.scheduleRefresh();
       return;
     }
 
+    this.renderStatus = "idle";
+    this.hideToast();
     this.cleanup(true);
   }
 
   setLanguage(language: LanguageCode): void {
     this.language = language;
-    this.scheduleRefresh();
-  }
-
-  setStrategy(strategy: SpeedStrategy): void {
-    if (this.strategy === strategy) {
-      return;
-    }
-
-    this.strategy = strategy;
-    this.clearMetric();
-    this.applyPrehideState();
-    this.writeBridge();
     this.scheduleRefresh();
   }
 
@@ -111,6 +122,9 @@ export class SpeedControls {
 
     if (visibleCountChanged) {
       this.visibleLimits.clear();
+      this.routeStartedAt = performance.now();
+      this.toastConversationId = null;
+      this.clearMetric();
     }
 
     this.scheduleRefresh();
@@ -120,12 +134,12 @@ export class SpeedControls {
     return this.enabled;
   }
 
-  getStrategy(): SpeedStrategy {
-    return this.strategy;
-  }
-
   getInitialRenderMetric(): InitialRenderMetric | null {
     return this.initialRenderMetric;
+  }
+
+  getRenderStatus(): SpeedRenderStatus {
+    return this.renderStatus;
   }
 
   private bindObservers(): void {
@@ -150,6 +164,11 @@ export class SpeedControls {
     if (!this.urlPoll) {
       this.urlPoll = window.setInterval(() => this.handleUrlMaybeChanged(), 500);
     }
+
+    if (!this.pageBridgeBound) {
+      window.addEventListener("message", this.handlePageBridgeMessage);
+      this.pageBridgeBound = true;
+    }
   }
 
   private patchHistoryMethod(method: "pushState" | "replaceState"): void {
@@ -169,9 +188,9 @@ export class SpeedControls {
     this.lastUrl = window.location.href;
     this.currentConversationId = null;
     this.routeStartedAt = performance.now();
+    this.toastConversationId = null;
     this.clearMetric();
     this.cleanup(false);
-    this.applyPrehideState();
     this.scheduleRefresh();
   }
 
@@ -189,34 +208,47 @@ export class SpeedControls {
 
   private refresh(preserveAnchor: boolean): void {
     if (!this.enabled) {
-      this.setPrehideActive(false);
+      this.renderStatus = "idle";
+      this.hideToast();
       this.cleanup(true);
       return;
     }
 
     if (!isConversationPage()) {
-      this.setPrehideActive(false);
+      this.renderStatus = "idle";
+      this.hideToast();
       this.cleanup(false);
       return;
     }
 
-    this.applyPrehideState();
     const conversationId = getConversationIdFromLocation();
     const messages = queryMessages();
 
     if (!conversationId || messages.length === 0) {
       this.cleanupPanel();
+      this.renderStatus = "measuring";
       return;
     }
 
     if (this.currentConversationId !== conversationId) {
       this.currentConversationId = conversationId;
+      this.toastConversationId = null;
       this.clearMetric();
+    }
+
+    if (messages.length <= this.settings.visibleMessages) {
+      this.renderStatus = "not-applicable";
+      this.hideToast();
+      this.cleanupPanel();
+      this.restoreManagedMessages();
+      this.clearMetric();
+      return;
     }
 
     const visibleLimit = this.getVisibleLimit(conversationId, messages.length);
     this.applyVisibility(messages, visibleLimit, preserveAnchor);
     this.render(messages, visibleLimit);
+    this.renderStatus = this.initialRenderMetric ? "complete" : "measuring";
     this.scheduleInitialMetric(conversationId, messages.length);
   }
 
@@ -283,13 +315,10 @@ export class SpeedControls {
         hidden: hiddenRemaining,
         visible: shownCount
       });
-      const strategyLabel = t(
-        this.strategy === "prehide" ? "speedStrategyPrehide" : "speedStrategyAfter"
-      );
       const metricLabel = this.initialRenderMetric
         ? t("speedRenderMetric", { seconds: formatSeconds(this.initialRenderMetric.ms) })
         : t("speedRenderPending");
-      summary.textContent = `${baseSummary} · ${strategyLabel} · ${metricLabel}`;
+      summary.textContent = `${baseSummary} · ${metricLabel}`;
     }
 
     if (toolbar) {
@@ -377,7 +406,6 @@ export class SpeedControls {
     this.cleanupPanel();
 
     if (restoreMessages) {
-      this.setPrehideActive(false);
       this.restoreManagedMessages();
     }
   }
@@ -396,7 +424,53 @@ export class SpeedControls {
 
     return (
       Boolean(this.root && (mutation.target === this.root || this.root.contains(mutation.target))) ||
-      nodes.some((node) => isSpeedPanelNode(node))
+      Boolean(this.toast && (mutation.target === this.toast || this.toast.contains(mutation.target))) ||
+      nodes.some((node) => isSpeedPanelNode(node) || isSpeedToastNode(node))
+    );
+  }
+
+  private handleConversationApiReady(message: ConversationApiReadyMessage): void {
+    if (!this.enabled || !isConversationPage() || message.conversationId !== getConversationIdFromLocation()) {
+      this.ackConversationApiReady(message.id);
+      return;
+    }
+
+    if (message.messageCount <= this.settings.visibleMessages) {
+      this.renderStatus = "not-applicable";
+      this.hideToast();
+      this.ackConversationApiReady(message.id);
+      return;
+    }
+
+    if (this.toastConversationId === message.conversationId || this.initialRenderMetric) {
+      this.ackConversationApiReady(message.id);
+      return;
+    }
+
+    this.currentConversationId = message.conversationId;
+    this.toastConversationId = message.conversationId;
+    this.routeStartedAt = message.readyAt;
+    this.clearMetric();
+    this.renderStatus = "measuring";
+    this.showApplyingToast(
+      message.messageCount,
+      Math.min(message.visibleMessages, message.messageCount)
+    );
+    this.ackConversationApiReady(message.id);
+  }
+
+  private ackConversationApiReady(id: unknown): void {
+    if (!id) {
+      return;
+    }
+
+    window.postMessage(
+      {
+        source: CONTENT_SOURCE,
+        type: "GPTBD_CONVERSATION_API_READY_ACK",
+        id
+      },
+      "*"
     );
   }
 
@@ -421,6 +495,8 @@ export class SpeedControls {
         messageCount: stableCount,
         ms: Math.max(0, performance.now() - this.routeStartedAt)
       };
+      this.renderStatus = "complete";
+      this.hideToast(TOAST_HIDE_MS);
       this.scheduleRefresh();
     }, METRIC_SETTLE_MS);
   }
@@ -434,14 +510,93 @@ export class SpeedControls {
     this.initialRenderMetric = null;
   }
 
-  private applyPrehideState(): void {
-    this.setPrehideActive(
-      this.enabled && this.strategy === "prehide" && isConversationPage()
+  private showApplyingToast(totalMessages: number, visibleMessages: number): void {
+    if (this.initialRenderMetric) {
+      return;
+    }
+
+    this.updateToast(
+      "applying",
+      t("speedToastApplyingTitle"),
+      t("speedToastApplyingBody", {
+        total: totalMessages,
+        visible: visibleMessages
+      })
     );
   }
 
-  private setPrehideActive(active: boolean): void {
-    document.documentElement.toggleAttribute(PREHIDE_ATTR, active);
+  private updateToast(state: "applying" | "complete", title: string, body: string): void {
+    if (this.toastHideTimer) {
+      window.clearTimeout(this.toastHideTimer);
+      this.toastHideTimer = null;
+    }
+
+    const toast = this.ensureToast();
+
+    if (!toast) {
+      return;
+    }
+
+    const titleElement = toast.querySelector<HTMLElement>(".gptbd-speed-toast-title");
+    const bodyElement = toast.querySelector<HTMLElement>(".gptbd-speed-toast-body");
+    toast.dataset.state = state;
+    toast.hidden = false;
+
+    if (titleElement) {
+      titleElement.textContent = title;
+    }
+
+    if (bodyElement) {
+      bodyElement.textContent = body;
+    }
+  }
+
+  private ensureToast(): HTMLElement | null {
+    if (this.toast?.isConnected) {
+      return this.toast;
+    }
+
+    if (!document.body) {
+      return null;
+    }
+
+    const toast = document.createElement("div");
+    toast.className = TOAST_CLASS;
+    toast.setAttribute("role", "status");
+    toast.setAttribute("aria-live", "polite");
+
+    const title = document.createElement("strong");
+    title.className = "gptbd-speed-toast-title";
+
+    const body = document.createElement("span");
+    body.className = "gptbd-speed-toast-body";
+
+    toast.append(title, body);
+    document.body.append(toast);
+    this.toast = toast;
+    return toast;
+  }
+
+  private hideToast(delayMs = 0): void {
+    if (this.toastHideTimer) {
+      window.clearTimeout(this.toastHideTimer);
+      this.toastHideTimer = null;
+    }
+
+    const hide = () => {
+      this.toast?.remove();
+      this.toast = null;
+    };
+
+    if (delayMs > 0) {
+      this.toastHideTimer = window.setTimeout(() => {
+        this.toastHideTimer = null;
+        hide();
+      }, delayMs);
+      return;
+    }
+
+    hide();
   }
 
   private writeBridge(): void {
@@ -449,7 +604,6 @@ export class SpeedControls {
       enabled: this.enabled,
       visibleMessages: this.settings.visibleMessages,
       batchMessages: this.settings.batchMessages,
-      strategy: this.strategy,
       mode: "dom-hide"
     };
 
@@ -467,28 +621,6 @@ export class SpeedControls {
       },
       "*"
     );
-  }
-}
-
-export function applySpeedBootstrap(): void {
-  try {
-    const raw = localStorage.getItem(SPEED_BRIDGE_KEY);
-
-    if (!raw) {
-      return;
-    }
-
-    const parsed = JSON.parse(raw) as {
-      enabled?: unknown;
-      strategy?: unknown;
-    };
-    const shouldPrehide =
-      parsed.enabled === true &&
-      parsed.strategy === "prehide" &&
-      isConversationPage();
-    document.documentElement.toggleAttribute(PREHIDE_ATTR, shouldPrehide);
-  } catch {
-    document.documentElement.removeAttribute(PREHIDE_ATTR);
   }
 }
 
@@ -512,31 +644,13 @@ function queryMessages(): HTMLElement[] {
 function hideMessage(element: HTMLElement): void {
   element.classList.add(HIDDEN_CLASS);
   element.setAttribute(HIDDEN_ATTR, "true");
-  setVisibleMarker(element, false);
   element.setAttribute("aria-hidden", "true");
 }
 
 function showMessage(element: HTMLElement): void {
   element.classList.remove(HIDDEN_CLASS);
   element.removeAttribute(HIDDEN_ATTR);
-  setVisibleMarker(element, true);
   element.removeAttribute("aria-hidden");
-}
-
-function setVisibleMarker(element: HTMLElement, visible: boolean): void {
-  const targets = [
-    element,
-    ...Array.from(element.querySelectorAll<HTMLElement>(MESSAGE_SELECTOR))
-  ];
-
-  targets.forEach((target) => {
-    if (visible) {
-      target.setAttribute(VISIBLE_ATTR, "true");
-      return;
-    }
-
-    target.removeAttribute(VISIBLE_ATTR);
-  });
 }
 
 function captureAnchor(messages: HTMLElement[]): AnchorSnapshot | null {
@@ -602,6 +716,26 @@ function isSpeedPanelNode(node: Node): boolean {
   return (
     node instanceof HTMLElement &&
     (node.classList.contains(PANEL_CLASS) || Boolean(node.closest(`.${PANEL_CLASS}`)))
+  );
+}
+
+function isSpeedToastNode(node: Node): boolean {
+  return (
+    node instanceof HTMLElement &&
+    (node.classList.contains(TOAST_CLASS) || Boolean(node.closest(`.${TOAST_CLASS}`)))
+  );
+}
+
+function isConversationApiReadyMessage(data: unknown): data is ConversationApiReadyMessage {
+  return (
+    Boolean(data) &&
+    typeof data === "object" &&
+    (data as { source?: unknown }).source === PAGE_SOURCE &&
+    (data as { type?: unknown }).type === "GPTBD_CONVERSATION_API_READY" &&
+    typeof (data as { conversationId?: unknown }).conversationId === "string" &&
+    typeof (data as { messageCount?: unknown }).messageCount === "number" &&
+    typeof (data as { visibleMessages?: unknown }).visibleMessages === "number" &&
+    typeof (data as { readyAt?: unknown }).readyAt === "number"
   );
 }
 

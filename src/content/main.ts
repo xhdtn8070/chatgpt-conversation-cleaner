@@ -5,7 +5,7 @@ import type {
   DeleteSummary,
   ExtensionMessage,
   ExtensionState,
-  SpeedStrategy
+  SpeedRenderStatus
 } from "../shared/messages";
 import {
   getDefaultLanguage,
@@ -17,7 +17,6 @@ import {
 } from "./i18n";
 import { clearSelection, removeSelected, selectAll, toggleSelection } from "./selection";
 import {
-  applySpeedBootstrap,
   SPEED_DEFAULTS,
   SpeedControls,
   type SpeedSettings
@@ -33,8 +32,7 @@ const STORAGE_KEYS = {
   sidebarControls: "gptbd.sidebarControls",
   speedMode: "gptbd.speedMode",
   speedVisibleMessages: "gptbd.speedVisibleMessages",
-  speedBatchMessages: "gptbd.speedBatchMessages",
-  speedStrategy: "gptbd.speedStrategy"
+  speedBatchMessages: "gptbd.speedBatchMessages"
 } as const;
 const FIRST_RUN_DEFAULTS = {
   extensionEnabled: true,
@@ -42,8 +40,7 @@ const FIRST_RUN_DEFAULTS = {
   sidebarControls: true,
   speedMode: false,
   speedVisibleMessages: 10,
-  speedBatchMessages: 5,
-  speedStrategy: "after-render" as SpeedStrategy
+  speedBatchMessages: 5
 } as const;
 const MESSAGE_TYPES = {
   getState: "GPTBD_GET_STATE",
@@ -53,7 +50,6 @@ const MESSAGE_TYPES = {
   setSidebarControls: "GPTBD_SET_SIDEBAR_CONTROLS",
   setSpeedMode: "GPTBD_SET_SPEED_MODE",
   setSpeedSettings: "GPTBD_SET_SPEED_SETTINGS",
-  setSpeedStrategy: "GPTBD_SET_SPEED_STRATEGY",
   selectAllVisible: "GPTBD_SELECT_ALL_VISIBLE",
   clearSelection: "GPTBD_CLEAR_SELECTION",
   archiveSelected: "GPTBD_ARCHIVE_SELECTED",
@@ -132,7 +128,6 @@ class BulkDeleteController {
   private sidebarControls = true;
   private speedMode = false;
   private speedSettings: SpeedSettings = { ...SPEED_DEFAULTS };
-  private speedStrategy: SpeedStrategy = FIRST_RUN_DEFAULTS.speedStrategy;
   private selectedIds = new Set<string>();
   private rows = new Map<string, ConversationRow>();
   private speedControls = new SpeedControls();
@@ -180,7 +175,7 @@ class BulkDeleteController {
 
   constructor() {
     injectDocumentStyle();
-    applySpeedBootstrap();
+    injectPageBridge();
 
     this.host = document.getElementById(ROOT_ID) ?? document.createElement("div");
     this.host.id = ROOT_ID;
@@ -237,9 +232,6 @@ class BulkDeleteController {
       FIRST_RUN_DEFAULTS.sidebarControls
     );
     this.speedMode = await storageGet(STORAGE_KEYS.speedMode, FIRST_RUN_DEFAULTS.speedMode);
-    this.speedStrategy = normalizeSpeedStrategy(
-      await storageGet(STORAGE_KEYS.speedStrategy, FIRST_RUN_DEFAULTS.speedStrategy)
-    );
     this.speedSettings = {
       visibleMessages: clampNumber(
         await storageGet(STORAGE_KEYS.speedVisibleMessages, FIRST_RUN_DEFAULTS.speedVisibleMessages),
@@ -259,8 +251,7 @@ class BulkDeleteController {
     this.speedControls.init(
       this.extensionEnabled && this.speedMode,
       this.language,
-      this.speedSettings,
-      this.speedStrategy
+      this.speedSettings
     );
     this.bindRuntimeMessages();
     this.bindPageListeners();
@@ -282,7 +273,7 @@ class BulkDeleteController {
       speedMode: this.speedMode,
       speedVisibleMessages: this.speedSettings.visibleMessages,
       speedBatchMessages: this.speedSettings.batchMessages,
-      speedStrategy: this.speedStrategy,
+      speedRenderStatus: this.speedControls.getRenderStatus(),
       speedRenderMs: this.speedControls.getInitialRenderMetric()?.ms ?? null,
       speedRenderMessageCount: this.speedControls.getInitialRenderMetric()?.messageCount ?? 0,
       lastDeleteSummary: this.lastDeleteSummary
@@ -346,19 +337,6 @@ class BulkDeleteController {
     this.speedMode = enabled;
     void storageSet(STORAGE_KEYS.speedMode, enabled);
     await this.speedControls.setEnabled(this.extensionEnabled && enabled);
-    return this.getState();
-  }
-
-  async setSpeedStrategy(strategy: SpeedStrategy): Promise<ExtensionState> {
-    const nextStrategy = normalizeSpeedStrategy(strategy);
-
-    if (this.speedStrategy === nextStrategy) {
-      return this.getState();
-    }
-
-    this.speedStrategy = nextStrategy;
-    void storageSet(STORAGE_KEYS.speedStrategy, nextStrategy);
-    this.speedControls.setStrategy(nextStrategy);
     return this.getState();
   }
 
@@ -436,7 +414,7 @@ class BulkDeleteController {
             speedMode: this.speedMode,
             speedVisibleMessages: this.speedSettings.visibleMessages,
             speedBatchMessages: this.speedSettings.batchMessages,
-            speedStrategy: this.speedStrategy,
+            speedRenderStatus: this.speedControls.getRenderStatus() as SpeedRenderStatus,
             speedRenderMs: this.speedControls.getInitialRenderMetric()?.ms ?? null,
             speedRenderMessageCount: this.speedControls.getInitialRenderMetric()?.messageCount ?? 0,
             error: getErrorMessage(error)
@@ -467,8 +445,6 @@ class BulkDeleteController {
           visibleMessages: message.visibleMessages,
           batchMessages: message.batchMessages
         });
-      case MESSAGE_TYPES.setSpeedStrategy:
-        return this.setSpeedStrategy(message.strategy);
       case MESSAGE_TYPES.selectAllVisible:
         return this.selectAllVisible();
       case MESSAGE_TYPES.clearSelection:
@@ -1041,9 +1017,13 @@ class BulkDeleteController {
     return (
       mutation.target === this.actionBar ||
       this.actionBar.contains(mutation.target) ||
+      isManagedSpeedNode(mutation.target) ||
       (nodes.length > 0 &&
         nodes.every(
-          (node) => node === this.actionBar || (node instanceof Node && this.actionBar.contains(node))
+          (node) =>
+            node === this.actionBar ||
+            isManagedSpeedNode(node) ||
+            (node instanceof Node && this.actionBar.contains(node))
         ))
     );
   }
@@ -1715,6 +1695,25 @@ function injectDocumentStyle(): void {
   document.documentElement.append(style);
 }
 
+function injectPageBridge(): void {
+  const runtime = typeof chrome !== "undefined" ? chrome.runtime : undefined;
+
+  if (!runtime?.getURL) {
+    return;
+  }
+
+  if (document.documentElement.querySelector('script[data-gptbd-page-bridge="true"]')) {
+    return;
+  }
+
+  const script = document.createElement("script");
+  script.dataset.gptbdPageBridge = "true";
+  script.src = runtime.getURL("assets/page-bridge.js");
+  script.onload = () => script.remove();
+  script.onerror = () => script.remove();
+  document.documentElement.append(script);
+}
+
 function storageGet<T>(key: string, fallback: T): Promise<T> {
   if (typeof chrome === "undefined" || !chrome.storage?.local) {
     return Promise.resolve(fallback);
@@ -1789,12 +1788,19 @@ function clampNumber(value: unknown, min: number, max: number, fallback: number)
     : fallback;
 }
 
-function normalizeSpeedStrategy(value: unknown): SpeedStrategy {
-  return value === "prehide" ? "prehide" : "after-render";
-}
-
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function isManagedSpeedNode(node: Node): boolean {
+  if (!(node instanceof HTMLElement)) {
+    return Boolean(
+      node.parentNode instanceof HTMLElement &&
+        node.parentNode.closest(".gptbd-speed-panel,.gptbd-speed-toast")
+    );
+  }
+
+  return Boolean(node.closest(".gptbd-speed-panel,.gptbd-speed-toast"));
 }
 
 if (!window.__gptbdController) {

@@ -4,6 +4,8 @@ import { resolve } from "node:path";
 declare global {
   interface Window {
     __speedApiCalls: number;
+    __gptbdToastWasVisibleBeforeRender?: boolean;
+    __gptbdTurnsBeforeRender?: number;
   }
 }
 
@@ -42,6 +44,7 @@ test("speed mode hides old ChatGPT turns and reveals them without reload", async
       }
     } as unknown as typeof chrome;
   });
+  await page.addInitScript({ path: resolve("dist/assets/page-bridge.js") });
 
   await page.route("https://chatgpt.com/c/speed-alpha", async (route) => {
     await route.fulfill({
@@ -51,21 +54,25 @@ test("speed mode hides old ChatGPT turns and reveals them without reload", async
   });
   await page.route("https://chatgpt.com/backend-api/conversation/speed-alpha", async (route) => {
     apiCalls += 1;
+    await new Promise((resolve) => setTimeout(resolve, 200));
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify(conversation)
     });
   });
 
-  await page.goto("https://chatgpt.com/c/speed-alpha");
+  await page.goto("https://chatgpt.com/c/speed-alpha", { waitUntil: "domcontentloaded" });
+  await page.addScriptTag({ path: resolve("dist/assets/content.js") });
+  await page.waitForSelector("html[data-gptbd-ready='true']");
   await page.waitForFunction(
     () => document.querySelectorAll("section[data-testid^='conversation-turn-']").length === 30
   );
   await expect.poll(() => apiCalls).toBe(1);
 
-  await page.addScriptTag({ path: resolve("dist/assets/content.js") });
-  await page.waitForSelector("html[data-gptbd-ready='true']");
-
+  await expect(page.locator(".gptbd-speed-toast")).toBeVisible();
+  await expect(page.locator(".gptbd-speed-toast")).toContainText(/Applying speed mode|Speed mode ready/);
+  await expect.poll(() => page.evaluate(() => window.__gptbdToastWasVisibleBeforeRender)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.__gptbdTurnsBeforeRender)).toBe(0);
   await expect(page.getByText("20 older collapsed · 10 shown")).toBeVisible();
   await expect(page.locator("section[data-gptbd-speed-hidden='true']")).toHaveCount(20);
   await expect(
@@ -108,9 +115,8 @@ test("speed mode hides old ChatGPT turns and reveals them without reload", async
   await expect.poll(() => apiCalls).toBe(1);
 });
 
-test("speed mode prehide strategy hides turns before exposing the recent batch", async ({ page }) => {
-  const conversation = buildConversation(30);
-  let apiCalls = 0;
+test("speed mode stays idle when the conversation is within the initial visible size", async ({ page }) => {
+  const conversation = buildConversation(10);
 
   await page.addInitScript(() => {
     const storage: Record<string, unknown> = {
@@ -118,11 +124,9 @@ test("speed mode prehide strategy hides turns before exposing the recent batch",
       "gptbd.speedMode": true,
       "gptbd.speedVisibleMessages": 10,
       "gptbd.speedBatchMessages": 5,
-      "gptbd.speedStrategy": "prehide",
       "gptbd.sidebarControls": true
     };
 
-    window.__speedApiCalls = 0;
     window.chrome = {
       storage: {
         local: {
@@ -144,6 +148,7 @@ test("speed mode prehide strategy hides turns before exposing the recent batch",
       }
     } as unknown as typeof chrome;
   });
+  await page.addInitScript({ path: resolve("dist/assets/page-bridge.js") });
 
   await page.route("https://chatgpt.com/c/speed-alpha", async (route) => {
     await route.fulfill({
@@ -152,8 +157,7 @@ test("speed mode prehide strategy hides turns before exposing the recent batch",
     });
   });
   await page.route("https://chatgpt.com/backend-api/conversation/speed-alpha", async (route) => {
-    apiCalls += 1;
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 200));
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify(conversation)
@@ -163,22 +167,18 @@ test("speed mode prehide strategy hides turns before exposing the recent batch",
   await page.goto("https://chatgpt.com/c/speed-alpha", { waitUntil: "domcontentloaded" });
   await page.addScriptTag({ path: resolve("dist/assets/content.js") });
   await page.waitForSelector("html[data-gptbd-ready='true']");
-  await expect(page.locator("html")).toHaveAttribute("data-gptbd-speed-prehide", "");
-
   await page.waitForFunction(
-    () => document.querySelectorAll("section[data-testid^='conversation-turn-']").length === 30
+    () => document.querySelectorAll("section[data-testid^='conversation-turn-']").length === 10
   );
-  await expect.poll(() => apiCalls).toBe(1);
 
-  await expect(page.getByText("20 older collapsed · 10 shown")).toBeVisible();
-  await expect(page.getByText("B prehide")).toBeVisible();
-  await expect(page.locator("section[data-gptbd-speed-hidden='true']")).toHaveCount(20);
-  await expect(page.locator("section[data-gptbd-speed-visible='true']")).toHaveCount(10);
+  await expect(page.locator(".gptbd-speed-panel")).toHaveCount(0);
+  await expect(page.locator(".gptbd-speed-toast")).toHaveCount(0);
+  await expect(page.locator("section[data-gptbd-speed-hidden='true']")).toHaveCount(0);
   await expect
     .poll(() =>
-      page.evaluate(() => (window as typeof window & { __gptbdController?: { getState(): { speedRenderMs: number | null } } }).__gptbdController?.getState().speedRenderMs)
+      page.evaluate(() => (window as typeof window & { __gptbdController?: { getState(): { speedRenderStatus: string } } }).__gptbdController?.getState().speedRenderStatus)
     )
-    .not.toBeNull();
+    .toBe("not-applicable");
 });
 
 function conversationHtml(): string {
@@ -226,6 +226,8 @@ function conversationHtml(): string {
         const data = await response.json();
         const thread = document.getElementById("thread");
         thread.replaceChildren();
+        window.__gptbdToastWasVisibleBeforeRender = Boolean(document.querySelector(".gptbd-speed-toast"));
+        window.__gptbdTurnsBeforeRender = document.querySelectorAll("section[data-testid^='conversation-turn-']").length;
 
         for (const nodeId of visibleNodes(data)) {
           const node = data.mapping[nodeId];

@@ -52,10 +52,8 @@ const EN_MESSAGES = {
   popupSpeedSettingsAria: { message: "Speed mode settings" },
   popupSpeedVisibleLabel: { message: "Recent messages" },
   popupSpeedBatchLabel: { message: "Load more size" },
-  popupSpeedStrategyLabel: { message: "Experiment" },
-  popupSpeedStrategyAfter: { message: "A current" },
-  popupSpeedStrategyPrehide: { message: "B prehide" },
   popupSpeedMetricPending: { message: "Render: measuring" },
+  popupSpeedMetricNotApplicable: { message: "Render: long chats only" },
   popupSpeedMetric: {
     message: "Render: $seconds s",
     placeholders: ["seconds"]
@@ -124,10 +122,8 @@ const KO_MESSAGES: Record<MessageKey, MessageDefinition> = {
   popupSpeedSettingsAria: { message: "속도 모드 설정" },
   popupSpeedVisibleLabel: { message: "최근 표시" },
   popupSpeedBatchLabel: { message: "더보기 개수" },
-  popupSpeedStrategyLabel: { message: "실험 방식" },
-  popupSpeedStrategyAfter: { message: "A 기존" },
-  popupSpeedStrategyPrehide: { message: "B 선숨김" },
   popupSpeedMetricPending: { message: "렌더 측정 대기" },
+  popupSpeedMetricNotApplicable: { message: "렌더 긴 대화에서만 적용" },
   popupSpeedMetric: {
     message: "렌더 $seconds초",
     placeholders: ["seconds"]

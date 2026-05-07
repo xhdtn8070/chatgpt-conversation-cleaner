@@ -211,12 +211,6 @@ html.gptbd-bulk-active [data-gptbd-force-menu="true"] button[aria-label*="option
   visibility: visible !important;
 }
 
-html[data-gptbd-speed-prehide="true"] main article[data-testid^="conversation-turn-"]:not([data-gptbd-speed-visible="true"]),
-html[data-gptbd-speed-prehide="true"] main section[data-testid^="conversation-turn-"]:not([data-gptbd-speed-visible="true"]),
-html[data-gptbd-speed-prehide="true"] main div[data-testid^="conversation-turn-"]:not([data-gptbd-speed-visible="true"]) {
-  display: none !important;
-}
-
 [data-gptbd-action-bar="true"] {
   position: relative !important;
   z-index: 1 !important;
@@ -426,6 +420,48 @@ html[data-gptbd-speed-prehide="true"] main div[data-testid^="conversation-turn-"
 .gptbd-speed-actions button:disabled {
   cursor: not-allowed !important;
   opacity: 0.55 !important;
+}
+
+.gptbd-speed-toast {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  z-index: 2147483645 !important;
+  display: grid !important;
+  gap: 4px !important;
+  width: min(360px, calc(100vw - 40px)) !important;
+  padding: 14px 16px !important;
+  box-sizing: border-box !important;
+  transform: translate(-50%, -50%) !important;
+  border: 1px solid color-mix(in srgb, CanvasText 14%, transparent) !important;
+  border-radius: 8px !important;
+  background: color-mix(in srgb, Canvas 96%, transparent) !important;
+  box-shadow: 0 18px 60px color-mix(in srgb, CanvasText 22%, transparent) !important;
+  color: CanvasText !important;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  pointer-events: none !important;
+}
+
+.gptbd-speed-toast[hidden] {
+  display: none !important;
+}
+
+.gptbd-speed-toast[data-state="complete"] {
+  border-color: color-mix(in srgb, #0f7a55 38%, transparent) !important;
+}
+
+.gptbd-speed-toast-title {
+  color: CanvasText !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  line-height: 1.25 !important;
+}
+
+.gptbd-speed-toast-body {
+  color: color-mix(in srgb, CanvasText 68%, transparent) !important;
+  font-size: 12px !important;
+  font-weight: 650 !important;
+  line-height: 1.35 !important;
 }
 
 @media (max-width: 640px) {

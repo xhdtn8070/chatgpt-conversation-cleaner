@@ -28,5 +28,11 @@
       "js": ["assets/content.js"],
       "run_at": "document_start"
     }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["assets/page-bridge*.js"],
+      "matches": ["https://chatgpt.com/*", "https://chat.openai.com/*"]
+    }
   ]
 }

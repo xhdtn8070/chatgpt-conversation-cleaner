@@ -5,11 +5,10 @@ export const STORAGE_KEYS = {
   sidebarControls: "gptbd.sidebarControls",
   speedMode: "gptbd.speedMode",
   speedVisibleMessages: "gptbd.speedVisibleMessages",
-  speedBatchMessages: "gptbd.speedBatchMessages",
-  speedStrategy: "gptbd.speedStrategy"
+  speedBatchMessages: "gptbd.speedBatchMessages"
 } as const;
 
-export type SpeedStrategy = "after-render" | "prehide";
+export type SpeedRenderStatus = "idle" | "not-applicable" | "measuring" | "complete";
 
 export const FIRST_RUN_DEFAULTS = {
   extensionEnabled: true,
@@ -17,8 +16,7 @@ export const FIRST_RUN_DEFAULTS = {
   sidebarControls: true,
   speedMode: false,
   speedVisibleMessages: 10,
-  speedBatchMessages: 5,
-  speedStrategy: "after-render" as SpeedStrategy
+  speedBatchMessages: 5
 } as const;
 
 export const MESSAGE_TYPES = {
@@ -29,7 +27,6 @@ export const MESSAGE_TYPES = {
   setSidebarControls: "GPTBD_SET_SIDEBAR_CONTROLS",
   setSpeedMode: "GPTBD_SET_SPEED_MODE",
   setSpeedSettings: "GPTBD_SET_SPEED_SETTINGS",
-  setSpeedStrategy: "GPTBD_SET_SPEED_STRATEGY",
   selectAllVisible: "GPTBD_SELECT_ALL_VISIBLE",
   clearSelection: "GPTBD_CLEAR_SELECTION",
   archiveSelected: "GPTBD_ARCHIVE_SELECTED",
@@ -64,7 +61,7 @@ export type ExtensionState = {
   speedMode: boolean;
   speedVisibleMessages: number;
   speedBatchMessages: number;
-  speedStrategy: SpeedStrategy;
+  speedRenderStatus: SpeedRenderStatus;
   speedRenderMs: number | null;
   speedRenderMessageCount: number;
   lastDeleteSummary?: DeleteSummary;
@@ -77,7 +74,6 @@ export type ExtensionMessage =
   | { type: typeof MESSAGE_TYPES.setLanguage; language: LanguagePreference }
   | { type: typeof MESSAGE_TYPES.setSidebarControls; enabled: boolean }
   | { type: typeof MESSAGE_TYPES.setSpeedMode; enabled: boolean }
-  | { type: typeof MESSAGE_TYPES.setSpeedStrategy; strategy: SpeedStrategy }
   | {
       type: typeof MESSAGE_TYPES.setSpeedSettings;
       visibleMessages: number;

@@ -66,10 +66,13 @@ const EN_MESSAGES = {
   speedLoadMore: { message: "Load $count more", placeholders: ["count"] },
   speedViewAll: { message: "View all" },
   speedAllShown: { message: "All shown" },
-  speedStrategyAfter: { message: "A current" },
-  speedStrategyPrehide: { message: "B prehide" },
   speedRenderPending: { message: "measuring" },
-  speedRenderMetric: { message: "$seconds s", placeholders: ["seconds"] }
+  speedRenderMetric: { message: "$seconds s", placeholders: ["seconds"] },
+  speedToastApplyingTitle: { message: "Applying speed mode" },
+  speedToastApplyingBody: {
+    message: "Showing the newest $visible of $total messages first.",
+    placeholders: ["visible", "total"]
+  }
 } as const satisfies Record<string, MessageDefinition>;
 
 export type MessageKey = keyof typeof EN_MESSAGES;
@@ -133,10 +136,13 @@ const KO_MESSAGES: Record<MessageKey, MessageDefinition> = {
   speedLoadMore: { message: "$count개 더 보기", placeholders: ["count"] },
   speedViewAll: { message: "전체 보기" },
   speedAllShown: { message: "모두 표시됨" },
-  speedStrategyAfter: { message: "A 기존" },
-  speedStrategyPrehide: { message: "B 선숨김" },
   speedRenderPending: { message: "측정 중" },
-  speedRenderMetric: { message: "$seconds초", placeholders: ["seconds"] }
+  speedRenderMetric: { message: "$seconds초", placeholders: ["seconds"] },
+  speedToastApplyingTitle: { message: "속도 모드 적용 중" },
+  speedToastApplyingBody: {
+    message: "전체 $total개 중 최근 $visible개를 먼저 표시합니다.",
+    placeholders: ["visible", "total"]
+  }
 };
 
 let activeLanguage = getDefaultLanguage();

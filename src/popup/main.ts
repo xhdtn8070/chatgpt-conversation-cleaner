@@ -4,8 +4,7 @@ import {
   STORAGE_KEYS,
   type ExtensionMessage,
   type ExtensionState,
-  type LanguagePreference,
-  type SpeedStrategy
+  type LanguagePreference
 } from "../shared/messages";
 import {
   getDefaultLanguage,
@@ -15,6 +14,9 @@ import {
   type LanguageCode
 } from "../shared/i18n";
 import "./styles.css";
+
+const METRIC_REFRESH_MS = 350;
+const MAX_METRIC_REFRESHES = 40;
 
 const extensionEnabled = getElement<HTMLInputElement>("extensionEnabled");
 const extensionEnabledSwitch = getElement<HTMLLabelElement>("extensionEnabledSwitch");
@@ -46,9 +48,6 @@ const speedVisibleLabel = getElement<HTMLElement>("speedVisibleLabel");
 const speedVisibleMessages = getElement<HTMLInputElement>("speedVisibleMessages");
 const speedBatchLabel = getElement<HTMLElement>("speedBatchLabel");
 const speedBatchMessages = getElement<HTMLInputElement>("speedBatchMessages");
-const speedStrategyLabel = getElement<HTMLElement>("speedStrategyLabel");
-const speedStrategyAfter = getElement<HTMLButtonElement>("speedStrategyAfter");
-const speedStrategyPrehide = getElement<HTMLButtonElement>("speedStrategyPrehide");
 const speedMetric = getElement<HTMLElement>("speedMetric");
 const speedSettingsSave = getElement<HTMLButtonElement>("speedSettingsSave");
 const speedSettingsSaved = getElement<HTMLElement>("speedSettingsSaved");
@@ -60,6 +59,8 @@ const hint = getElement<HTMLElement>("hint");
 
 let currentState: ExtensionState | null = null;
 let currentLanguage: LanguageCode = getDefaultLanguage();
+let metricRefreshTimer: number | null = null;
+let metricRefreshAttempts = 0;
 
 setActiveLanguage(currentLanguage);
 applyStaticCopy();
@@ -98,14 +99,6 @@ speedModeToggle.addEventListener("click", () => {
 
 speedSettingsSave.addEventListener("click", () => {
   void saveSpeedSettings();
-});
-
-speedStrategyAfter.addEventListener("click", () => {
-  void setSpeedStrategy("after-render");
-});
-
-speedStrategyPrehide.addEventListener("click", () => {
-  void setSpeedStrategy("prehide");
 });
 
 selectAll.addEventListener("click", () => {
@@ -228,12 +221,11 @@ function renderState(state: ExtensionState): void {
   speedModeToggle.disabled = state.isDeleting;
   speedVisibleMessages.disabled = state.isDeleting;
   speedBatchMessages.disabled = state.isDeleting;
-  speedStrategyAfter.disabled = state.isDeleting;
-  speedStrategyPrehide.disabled = state.isDeleting;
   speedSettingsSave.disabled = state.isDeleting;
 }
 
 function renderUnavailable(): void {
+  clearMetricRefresh();
   currentState = null;
   extensionEnabled.checked = false;
   extensionEnabled.disabled = true;
@@ -250,7 +242,6 @@ function renderUnavailable(): void {
   speedModeToggle.setAttribute("aria-checked", String(FIRST_RUN_DEFAULTS.speedMode));
   speedVisibleMessages.value = String(FIRST_RUN_DEFAULTS.speedVisibleMessages);
   speedBatchMessages.value = String(FIRST_RUN_DEFAULTS.speedBatchMessages);
-  renderSpeedStrategy(FIRST_RUN_DEFAULTS.speedStrategy);
   speedMetric.textContent = t("popupSpeedMetricPending");
   speedModeSummary.textContent = t("popupSpeedSummary", {
     visible: FIRST_RUN_DEFAULTS.speedVisibleMessages,
@@ -267,9 +258,16 @@ function renderUnavailable(): void {
   speedModeToggle.disabled = true;
   speedVisibleMessages.disabled = true;
   speedBatchMessages.disabled = true;
-  speedStrategyAfter.disabled = true;
-  speedStrategyPrehide.disabled = true;
   speedSettingsSave.disabled = true;
+}
+
+function clearMetricRefresh(): void {
+  if (metricRefreshTimer) {
+    window.clearTimeout(metricRefreshTimer);
+    metricRefreshTimer = null;
+  }
+
+  metricRefreshAttempts = 0;
 }
 
 function setBusy(isBusy: boolean): void {
@@ -286,8 +284,6 @@ function setBusy(isBusy: boolean): void {
   speedModeToggle.disabled = isBusy || !state;
   speedVisibleMessages.disabled = isBusy || !state;
   speedBatchMessages.disabled = isBusy || !state;
-  speedStrategyAfter.disabled = isBusy || !state;
-  speedStrategyPrehide.disabled = isBusy || !state;
   speedSettingsSave.disabled = isBusy || !state;
 }
 
@@ -331,9 +327,6 @@ function applyStaticCopy(): void {
   speedSettings.setAttribute("aria-label", t("popupSpeedSettingsAria"));
   speedVisibleLabel.textContent = t("popupSpeedVisibleLabel");
   speedBatchLabel.textContent = t("popupSpeedBatchLabel");
-  speedStrategyLabel.textContent = t("popupSpeedStrategyLabel");
-  speedStrategyAfter.textContent = t("popupSpeedStrategyAfter");
-  speedStrategyPrehide.textContent = t("popupSpeedStrategyPrehide");
   speedSettingsSave.textContent = t("popupSpeedSave");
   supportTitle.textContent = t("popupSupportTitle");
   supportText.textContent = t("popupSupportText");
@@ -366,29 +359,50 @@ async function persistLanguagePreference(language: LanguagePreference): Promise<
 function renderSpeedSettings(state: ExtensionState): void {
   speedVisibleMessages.value = String(state.speedVisibleMessages);
   speedBatchMessages.value = String(state.speedBatchMessages);
-  renderSpeedStrategy(state.speedStrategy);
-  speedMetric.textContent =
-    state.speedRenderMs === null
-      ? t("popupSpeedMetricPending")
-      : t("popupSpeedMetric", { seconds: formatSeconds(state.speedRenderMs) });
+  speedMetric.textContent = getSpeedMetricText(state);
   speedModeSummary.textContent = t("popupSpeedSummary", {
     visible: state.speedVisibleMessages,
     batch: state.speedBatchMessages
   });
   speedSettings.hidden = !state.speedMode;
   speedSettingsSaved.textContent = "";
+  scheduleMetricRefresh(state);
 }
 
-function renderSpeedStrategy(strategy: SpeedStrategy): void {
-  speedStrategyAfter.setAttribute("aria-pressed", String(strategy === "after-render"));
-  speedStrategyPrehide.setAttribute("aria-pressed", String(strategy === "prehide"));
+function getSpeedMetricText(state: ExtensionState): string {
+  if (state.speedRenderStatus === "not-applicable") {
+    return t("popupSpeedMetricNotApplicable");
+  }
+
+  if (state.speedRenderMs !== null) {
+    return t("popupSpeedMetric", { seconds: formatSeconds(state.speedRenderMs) });
+  }
+
+  return t("popupSpeedMetricPending");
 }
 
-async function setSpeedStrategy(strategy: SpeedStrategy): Promise<void> {
-  await sendAndRender({
-    type: MESSAGE_TYPES.setSpeedStrategy,
-    strategy
-  });
+function scheduleMetricRefresh(state: ExtensionState): void {
+  if (metricRefreshTimer) {
+    window.clearTimeout(metricRefreshTimer);
+    metricRefreshTimer = null;
+  }
+
+  const shouldRefresh =
+    state.speedMode &&
+    state.speedRenderStatus === "measuring" &&
+    state.speedRenderMs === null &&
+    metricRefreshAttempts < MAX_METRIC_REFRESHES;
+
+  if (!shouldRefresh) {
+    metricRefreshAttempts = 0;
+    return;
+  }
+
+  metricRefreshAttempts += 1;
+  metricRefreshTimer = window.setTimeout(() => {
+    metricRefreshTimer = null;
+    void refresh();
+  }, METRIC_REFRESH_MS);
 }
 
 async function saveSpeedSettings(): Promise<void> {
