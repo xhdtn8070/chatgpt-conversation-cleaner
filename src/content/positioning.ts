@@ -14,9 +14,10 @@ export function computeCheckboxLayout(
   visibleSize = 16
 ): CheckboxLayout {
   const sidebarLeft = Number.isFinite(sidebarRect.left) ? sidebarRect.left : 0;
+  const rowLeft = Number.isFinite(rowRect.left) ? rowRect.left : sidebarLeft;
   const rowTop = Number.isFinite(rowRect.top) ? rowRect.top : 0;
   const rowHeight = Math.max(rowRect.height, targetSize);
-  const laneLeft = Math.max(0, Math.round(sidebarLeft + 6));
+  const laneLeft = Math.max(0, Math.round(Math.max(sidebarLeft + 2, rowLeft - 28)));
 
   return {
     left: laneLeft,

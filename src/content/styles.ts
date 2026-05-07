@@ -66,9 +66,9 @@ export const SHADOW_CSS = `
   position: fixed;
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 48px;
-  padding: 8px;
+  gap: 6px;
+  min-height: 38px;
+  padding: 4px;
   box-sizing: border-box;
   border: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
   border-radius: 8px;
@@ -79,21 +79,25 @@ export const SHADOW_CSS = `
 }
 
 .selected-count {
-  min-width: 82px;
+  flex: 1 1 auto;
+  min-width: 72px;
   color: CanvasText;
   font: 600 12px/1.2 ui-sans-serif, system-ui, sans-serif;
+  white-space: nowrap;
 }
 
 .action-bar button,
 .dialog button {
-  min-height: 32px;
+  flex: 0 0 auto;
+  min-height: 28px;
   border: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
   border-radius: 7px;
   background: color-mix(in srgb, CanvasText 5%, Canvas);
   color: CanvasText;
   cursor: pointer;
   font: 600 12px/1 ui-sans-serif, system-ui, sans-serif;
-  padding: 0 10px;
+  padding: 0 9px;
+  white-space: nowrap;
 }
 
 .action-bar button:hover,
@@ -165,6 +169,10 @@ export const SHADOW_CSS = `
 `;
 
 export const DOCUMENT_CSS = `
+html.gptbd-bulk-active [data-gptbd-row="true"] a[href*="/c/"] {
+  padding-left: max(44px, 2.75rem) !important;
+}
+
 html.gptbd-bulk-active [data-gptbd-row-selected="true"] {
   background: color-mix(in srgb, #0f7a55 14%, transparent) !important;
   border-radius: 8px !important;
@@ -172,5 +180,16 @@ html.gptbd-bulk-active [data-gptbd-row-selected="true"] {
 
 html.gptbd-bulk-active [data-gptbd-row-selected="true"] a {
   background: transparent !important;
+}
+
+[data-gptbd-toolbar-spacer="true"] {
+  display: block !important;
+  flex: 0 0 46px !important;
+  width: 100% !important;
+  height: 46px !important;
+  min-height: 46px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  pointer-events: none !important;
 }
 `;

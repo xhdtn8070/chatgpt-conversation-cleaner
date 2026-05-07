@@ -27,8 +27,13 @@
         box-sizing: border-box;
       }
 
-      .group-label {
-        margin: 16px 10px 8px;
+      .text-token-text-tertiary {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        height: 30px;
+        margin: 16px 0 8px;
+        padding: 0 16px;
         color: color-mix(in srgb, CanvasText 54%, transparent);
         font-size: 11px;
         font-weight: 700;
@@ -83,7 +88,11 @@
   </head>
   <body>
     <nav data-testid="sidebar" aria-label="Chat history">
-      <p class="group-label">Today</p>
+      <div
+        class="text-token-text-tertiary flex w-full items-center justify-start gap-0.5 px-4 py-1.5"
+      >
+        Recent
+      </div>
       <ol>
         <li id="row-alpha">
           <a href="/c/alpha">Alpha planning thread</a>
@@ -98,7 +107,9 @@
           <button class="more" aria-label="Open conversation options">...</button>
         </li>
       </ol>
-      <p class="group-label">Yesterday</p>
+      <div class="text-token-text-tertiary flex w-full items-center justify-start gap-0.5 px-4 py-1.5">
+        Yesterday
+      </div>
       <ol>
         <li>
           <a href="/c/delta">Delta architecture review</a>

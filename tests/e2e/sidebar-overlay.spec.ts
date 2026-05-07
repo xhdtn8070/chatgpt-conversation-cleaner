@@ -40,6 +40,15 @@ test("content script renders stable checkbox overlay and isolates row clicks", a
 
   const alphaCheckbox = page.getByRole("checkbox", { name: /select alpha planning thread/i });
   await expect(alphaCheckbox).toBeVisible();
+  await expect(page.locator("[data-gptbd-toolbar-spacer='true']")).toHaveCount(1);
+  await expect(page.locator("#row-alpha a")).toHaveCSS("padding-left", "44px");
+
+  const actionBar = page.locator("#gptbd-root .action-bar");
+  const actionBarBox = await actionBar.boundingBox();
+  const recentBox = await page.getByText("Recent", { exact: true }).boundingBox();
+  expect(actionBarBox).not.toBeNull();
+  expect(recentBox).not.toBeNull();
+  expect(actionBarBox!.y + actionBarBox!.height).toBeLessThanOrEqual(recentBox!.y + 2);
 
   await alphaCheckbox.click();
   await expect(page.locator("#row-alpha")).toHaveAttribute("data-gptbd-row-selected", "true");
@@ -55,4 +64,10 @@ test("content script renders stable checkbox overlay and isolates row clicks", a
   await expect(page.locator("#row-beta")).toHaveAttribute("data-gptbd-row-selected", "true");
   await expect(page.getByText("2 selected")).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.__navigated)).toBe(false);
+
+  await page.getByText("Select all", { exact: true }).click();
+  await expect(page.getByText("Deselect all", { exact: true })).toBeVisible();
+
+  await page.getByText("Deselect all", { exact: true }).click();
+  await expect(page.getByText("0 selected", { exact: true })).toBeVisible();
 });

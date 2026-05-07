@@ -21,6 +21,11 @@ bulkMode.addEventListener("change", () => {
 });
 
 selectAll.addEventListener("click", () => {
+  if (isAllVisibleSelected(currentState)) {
+    void sendAndRender({ type: MESSAGE_TYPES.clearSelection });
+    return;
+  }
+
   void sendAndRender({ type: MESSAGE_TYPES.selectAllVisible });
 });
 
@@ -83,6 +88,7 @@ function renderState(state: ExtensionState): void {
       : "No visible sidebar conversations were detected on this page.";
 
   const enabled = state.bulkMode && !state.isDeleting;
+  selectAll.textContent = isAllVisibleSelected(state) ? "Deselect all" : "Select all";
   selectAll.disabled = !enabled || state.visibleCount === 0;
   clear.disabled = !enabled || state.selectedCount === 0;
   deleteButton.disabled = !enabled || state.selectedCount === 0;
@@ -95,6 +101,7 @@ function renderUnavailable(): void {
   visibleCount.textContent = "0";
   selectedCount.textContent = "0";
   hint.textContent = "Open chatgpt.com, then reopen this popup to control Bulk mode.";
+  selectAll.textContent = "Select all";
   selectAll.disabled = true;
   clear.disabled = true;
   deleteButton.disabled = true;
@@ -107,6 +114,10 @@ function setBusy(isBusy: boolean): void {
   selectAll.disabled = !canUseActions || (state?.visibleCount ?? 0) === 0;
   clear.disabled = !canUseActions || (state?.selectedCount ?? 0) === 0;
   deleteButton.disabled = !canUseActions || (state?.selectedCount ?? 0) === 0;
+}
+
+function isAllVisibleSelected(state: ExtensionState | null): boolean {
+  return Boolean(state && state.visibleCount > 0 && state.selectedCount === state.visibleCount);
 }
 
 function getElement<T extends HTMLElement>(id: string): T {

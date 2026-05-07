@@ -6,7 +6,7 @@ describe("overlay positioning", () => {
     const layout = computeCheckboxLayout(rect(16, 100, 280, 44), rect(0, 0, 320, 800));
 
     expect(layout).toEqual({
-      left: 6,
+      left: 2,
       top: 106,
       size: 32,
       visibleSize: 16

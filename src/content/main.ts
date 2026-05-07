@@ -24,6 +24,7 @@ const MESSAGE_TYPES = {
 const DELETE_LABELS = ["delete", "삭제"];
 const CONFIRM_LABELS = ["delete", "confirm", "삭제", "확인"];
 const MENU_LABELS = ["options", "more", "menu", "conversation options", "옵션", "더 보기"];
+const HISTORY_HEADER_CLASS = "text-token-text-tertiary";
 
 declare global {
   interface Window {
@@ -42,6 +43,7 @@ class BulkDeleteController {
   private actionBar: HTMLElement;
   private dialogHost: HTMLElement;
   private notice: HTMLElement;
+  private toolbarSpacer: HTMLElement;
   private observer: MutationObserver;
   private refreshQueued = false;
   private isDeleting = false;
@@ -85,6 +87,8 @@ class BulkDeleteController {
     this.checkboxLayer = document.createElement("div");
     this.actionBar = document.createElement("div");
     this.dialogHost = document.createElement("div");
+    this.toolbarSpacer = document.createElement("div");
+    this.toolbarSpacer.dataset.gptbdToolbarSpacer = "true";
     this.notice = document.createElement("div");
     this.notice.className = "notice";
     this.notice.hidden = true;
@@ -214,6 +218,7 @@ class BulkDeleteController {
     this.clearRowHighlights();
     this.applyRowHighlights();
     this.renderCheckboxes();
+    this.syncToolbarSpacer();
     this.renderActionBar();
     this.renderNoticePosition();
   }
@@ -262,19 +267,32 @@ class BulkDeleteController {
 
     if (!this.bulkMode) {
       this.actionBar.replaceChildren();
+      this.actionBar.removeAttribute("style");
       return;
     }
 
     const sidebarRect = this.getSidebarRect();
-    this.actionBar.style.left = `${Math.max(sidebarRect.left + 8, 8)}px`;
-    this.actionBar.style.bottom = "12px";
-    this.actionBar.style.width = `${computeActionBarWidth(sidebarRect)}px`;
+    const toolbarRect = this.toolbarSpacer.isConnected
+      ? this.toolbarSpacer.getBoundingClientRect()
+      : null;
+    const left = Math.max(sidebarRect.left + 8, 8);
+    const availableWidth = Math.max(0, window.innerWidth - left - 8);
+    this.actionBar.style.left = `${left}px`;
+    this.actionBar.style.top = `${this.getActionBarTop(sidebarRect, toolbarRect)}px`;
+    this.actionBar.style.bottom = "auto";
+    this.actionBar.style.width = `${Math.min(computeActionBarWidth(sidebarRect), availableWidth)}px`;
 
     const count = document.createElement("span");
     count.className = "selected-count";
     count.textContent = `${this.selectedIds.size} selected`;
 
-    const selectAllButton = createActionButton("Select all", () => {
+    const allVisibleSelected = this.rows.size > 0 && this.selectedIds.size === this.rows.size;
+    const selectAllButton = createActionButton(allVisibleSelected ? "Deselect all" : "Select all", () => {
+      if (allVisibleSelected) {
+        this.clearSelection();
+        return;
+      }
+
       this.selectAllVisible();
     });
     selectAllButton.disabled = this.rows.size === 0 || this.isDeleting;
@@ -291,6 +309,29 @@ class BulkDeleteController {
     deleteButton.disabled = this.selectedIds.size === 0 || this.isDeleting;
 
     this.actionBar.replaceChildren(count, selectAllButton, clearButton, deleteButton);
+  }
+
+  private syncToolbarSpacer(): void {
+    if (!this.bulkMode) {
+      this.toolbarSpacer.remove();
+      return;
+    }
+
+    const anchor = this.findHistoryHeader();
+
+    if (!anchor) {
+      this.toolbarSpacer.remove();
+      return;
+    }
+
+    if (this.toolbarSpacer.parentElement !== anchor.parentElement) {
+      anchor.before(this.toolbarSpacer);
+      return;
+    }
+
+    if (this.toolbarSpacer.nextElementSibling !== anchor) {
+      anchor.before(this.toolbarSpacer);
+    }
   }
 
   private showDeleteDialog(): void {
@@ -388,12 +429,19 @@ class BulkDeleteController {
 
   private clearRowHighlights(): void {
     for (const row of this.rows.values()) {
+      row.row.removeAttribute("data-gptbd-row");
       row.row.removeAttribute("data-gptbd-row-selected");
     }
   }
 
   private applyRowHighlights(): void {
     for (const row of this.rows.values()) {
+      if (this.bulkMode) {
+        row.row.setAttribute("data-gptbd-row", "true");
+      } else {
+        row.row.removeAttribute("data-gptbd-row");
+      }
+
       if (this.selectedIds.has(row.id)) {
         row.row.setAttribute("data-gptbd-row-selected", "true");
       } else {
@@ -424,6 +472,74 @@ class BulkDeleteController {
     return null;
   }
 
+  private findHistoryHeader(): HTMLElement | null {
+    const firstRow = this.rows.values().next().value;
+
+    if (!firstRow) {
+      return null;
+    }
+
+    const sidebarRoot =
+      firstRow.row.closest<HTMLElement>(
+        'nav,aside,[data-testid*="sidebar" i],[aria-label*="sidebar" i],[class*="sidebar" i],[id*="sidebar" i]'
+      ) ?? firstRow.row.parentElement;
+
+    if (!sidebarRoot) {
+      return null;
+    }
+
+    const exactHeader = Array.from(
+      sidebarRoot.querySelectorAll<HTMLElement>(`.${HISTORY_HEADER_CLASS}`)
+    )
+      .filter((element) => {
+        const text = normalizeToolbarText(element.textContent ?? "");
+        return (
+          text.length > 0 &&
+          element.classList.contains("flex") &&
+          element.classList.contains("w-full") &&
+          element.classList.contains("items-center") &&
+          element.compareDocumentPosition(firstRow.row) & Node.DOCUMENT_POSITION_FOLLOWING
+        );
+      })
+      .sort((a, b) => b.getBoundingClientRect().top - a.getBoundingClientRect().top)[0];
+
+    if (exactHeader) {
+      return exactHeader;
+    }
+
+    return Array.from(sidebarRoot.querySelectorAll<HTMLElement>("div,p,span,h2,h3"))
+      .filter((element) => {
+        if (element === this.toolbarSpacer || element.querySelector('a[href*="/c/"]')) {
+          return false;
+        }
+
+        const text = normalizeToolbarText(element.textContent ?? "");
+        const rect = element.getBoundingClientRect();
+        return (
+          text.length > 0 &&
+          text.length <= 32 &&
+          rect.width > 0 &&
+          rect.height > 0 &&
+          rect.top < firstRow.rect.top
+        );
+      })
+      .sort((a, b) => b.getBoundingClientRect().top - a.getBoundingClientRect().top)[0] ?? null;
+  }
+
+  private getActionBarTop(sidebarRect: DOMRect, toolbarRect: DOMRect | null): number {
+    if (toolbarRect && toolbarRect.height > 0) {
+      return Math.round(toolbarRect.top + Math.max(4, (toolbarRect.height - 38) / 2));
+    }
+
+    const firstRow = this.rows.values().next().value;
+
+    if (firstRow) {
+      return Math.max(sidebarRect.top + 8, Math.round(firstRow.rect.top - 48));
+    }
+
+    return Math.max(sidebarRect.top + 8, 8);
+  }
+
   private getSidebarRect(): DOMRect {
     return (
       this.rows.values().next().value?.sidebarRect ??
@@ -447,7 +563,7 @@ class BulkDeleteController {
   private renderNoticePosition(): void {
     const sidebarRect = this.getSidebarRect();
     this.notice.style.left = `${Math.max(sidebarRect.left + 8, 8)}px`;
-    this.notice.style.bottom = this.bulkMode ? "72px" : "12px";
+    this.notice.style.bottom = "12px";
     this.notice.style.width = `${computeActionBarWidth(sidebarRect)}px`;
   }
 }
@@ -677,6 +793,10 @@ function cssEscape(value: string): string {
 
 function truncate(value: string, maxLength: number): string {
   return value.length > maxLength ? `${value.slice(0, maxLength - 1)}...` : value;
+}
+
+function normalizeToolbarText(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
 }
 
 function getErrorMessage(error: unknown): string {
