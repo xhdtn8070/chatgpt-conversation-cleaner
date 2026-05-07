@@ -217,12 +217,14 @@ html.gptbd-bulk-active [data-gptbd-force-menu="true"] button[aria-label*="option
   display: grid !important;
   gap: 6px !important;
   width: calc(100% - 16px) !important;
-  max-width: 420px !important;
+  max-width: none !important;
   min-width: 0 !important;
   margin: 4px 8px 8px !important;
   padding: 6px !important;
   box-sizing: border-box !important;
-  flex: 0 0 auto !important;
+  flex: 0 0 calc(100% - 16px) !important;
+  grid-column: 1 / -1 !important;
+  align-self: stretch !important;
   border: 1px solid color-mix(in srgb, CanvasText 12%, transparent) !important;
   border-radius: 8px !important;
   background: color-mix(in srgb, Canvas 94%, transparent) !important;

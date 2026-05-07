@@ -54,6 +54,58 @@ test("content script uses first-run defaults from browser language", async ({ pa
   await expect(page.getByRole("checkbox", { name: /alpha planning thread/i })).toHaveCount(0);
 });
 
+test("content script keeps the sidebar action bar on its own row in flex sidebars", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.chrome = {
+      storage: {
+        local: {
+          get(key: string, callback: (items: Record<string, unknown>) => void) {
+            callback({ [key]: undefined });
+          },
+          set(_items: Record<string, unknown>, callback?: () => void) {
+            callback?.();
+          }
+        }
+      },
+      runtime: {
+        onMessage: {
+          addListener() {
+            return undefined;
+          }
+        }
+      }
+    } as unknown as typeof chrome;
+  });
+
+  await page.goto(pathToFileURL(resolve("fixtures/sidebar.html")).toString());
+  await page.addStyleTag({
+    content: `
+      body { grid-template-columns: 570px 1fr; }
+      nav {
+        display: flex;
+        flex-wrap: wrap;
+        align-content: flex-start;
+        align-items: center;
+      }
+      nav > .text-token-text-tertiary {
+        flex: 0 0 auto;
+        width: auto;
+      }
+      nav > ol {
+        flex: 0 0 100%;
+      }
+    `
+  });
+  await page.addScriptTag({ path: resolve("dist/assets/content.js") });
+  await page.waitForSelector("html[data-gptbd-ready='true']");
+
+  const actionBarBox = await page.locator("[data-gptbd-action-bar='true']").boundingBox();
+  const recentBox = await page.getByText("Recent", { exact: true }).boundingBox();
+  expect(actionBarBox).not.toBeNull();
+  expect(recentBox).not.toBeNull();
+  expect(actionBarBox!.y + actionBarBox!.height).toBeLessThanOrEqual(recentBox!.y + 2);
+});
+
 test("content script renders stable checkbox overlay and isolates row clicks", async ({ page }) => {
   await page.addInitScript(() => {
     const storage: Record<string, unknown> = { "gptbd.bulkMode": true };
