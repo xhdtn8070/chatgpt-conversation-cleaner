@@ -704,17 +704,52 @@ class BulkDeleteController {
     }
     this.actionBar.dataset.density = density;
 
-    if (this.actionBar.parentElement !== anchor.parentElement) {
-      anchor.before(this.actionBar);
+    const insertionTarget = this.findActionBarInsertionTarget(anchor);
+
+    if (this.actionBar.parentElement !== insertionTarget.parentElement) {
+      insertionTarget.before(this.actionBar);
       return true;
     }
 
-    if (this.actionBar.nextElementSibling !== anchor) {
-      anchor.before(this.actionBar);
+    if (this.actionBar.nextElementSibling !== insertionTarget) {
+      insertionTarget.before(this.actionBar);
       return true;
     }
 
     return changed;
+  }
+
+  private findActionBarInsertionTarget(anchor: HTMLElement): HTMLElement {
+    const firstRow = this.rows.values().next().value;
+
+    if (!firstRow) {
+      return anchor;
+    }
+
+    const sidebarRoot =
+      firstRow.row.closest<HTMLElement>(
+        'nav,aside,[data-testid*="sidebar" i],[aria-label*="sidebar" i],[class*="sidebar" i],[id*="sidebar" i]'
+      ) ?? firstRow.row.parentElement;
+
+    let target = anchor;
+    let parent = anchor.parentElement;
+
+    while (parent && parent !== sidebarRoot) {
+      if (parent.contains(firstRow.row)) {
+        break;
+      }
+
+      const position = parent.compareDocumentPosition(firstRow.row);
+
+      if ((position & Node.DOCUMENT_POSITION_FOLLOWING) === 0) {
+        break;
+      }
+
+      target = parent;
+      parent = parent.parentElement;
+    }
+
+    return target;
   }
 
   private showActionDialog(action: BulkConversationAction): void {

@@ -234,6 +234,16 @@ html.gptbd-bulk-active [data-gptbd-force-menu="true"] button[aria-label*="option
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
 }
 
+:where(nav, aside, section, div):has(> [data-gptbd-action-bar="true"] + .text-token-text-tertiary) {
+  flex-wrap: wrap !important;
+}
+
+[data-gptbd-action-bar="true"] + .text-token-text-tertiary {
+  flex: 0 0 100% !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
 [data-gptbd-action-bar="true"][hidden] {
   display: none !important;
 }

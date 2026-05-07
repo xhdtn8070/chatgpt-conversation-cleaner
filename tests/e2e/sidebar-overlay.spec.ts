@@ -54,7 +54,7 @@ test("content script uses first-run defaults from browser language", async ({ pa
   await expect(page.getByRole("checkbox", { name: /alpha planning thread/i })).toHaveCount(0);
 });
 
-test("content script keeps the sidebar action bar on its own row in flex sidebars", async ({ page }) => {
+test("content script keeps the sidebar action bar on its own row in nowrap flex sidebars", async ({ page }) => {
   await page.addInitScript(() => {
     window.chrome = {
       storage: {
@@ -83,7 +83,7 @@ test("content script keeps the sidebar action bar on its own row in flex sidebar
       body { grid-template-columns: 570px 1fr; }
       nav {
         display: flex;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
         align-content: flex-start;
         align-items: center;
       }
@@ -100,6 +100,64 @@ test("content script keeps the sidebar action bar on its own row in flex sidebar
   await page.waitForSelector("html[data-gptbd-ready='true']");
 
   const actionBarBox = await page.locator("[data-gptbd-action-bar='true']").boundingBox();
+  const recentBox = await page.getByText("Recent", { exact: true }).boundingBox();
+  expect(actionBarBox).not.toBeNull();
+  expect(recentBox).not.toBeNull();
+  expect(actionBarBox!.y + actionBarBox!.height).toBeLessThanOrEqual(recentBox!.y + 2);
+});
+
+test("content script inserts the sidebar action bar outside header-only rows", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.chrome = {
+      storage: {
+        local: {
+          get(key: string, callback: (items: Record<string, unknown>) => void) {
+            callback({ [key]: undefined });
+          },
+          set(_items: Record<string, unknown>, callback?: () => void) {
+            callback?.();
+          }
+        }
+      },
+      runtime: {
+        onMessage: {
+          addListener() {
+            return undefined;
+          }
+        }
+      }
+    } as unknown as typeof chrome;
+  });
+
+  await page.goto(pathToFileURL(resolve("fixtures/sidebar.html")).toString());
+  await page.evaluate(() => {
+    const header = document.querySelector<HTMLElement>(".text-token-text-tertiary");
+    if (!header) {
+      return;
+    }
+
+    const row = document.createElement("div");
+    row.dataset.testid = "history-heading-row";
+    row.style.display = "flex";
+    row.style.alignItems = "center";
+    row.style.justifyContent = "space-between";
+    row.style.width = "100%";
+    row.style.flexWrap = "nowrap";
+    header.style.width = "auto";
+    header.style.flex = "0 0 auto";
+    header.before(row);
+    row.append(header);
+  });
+  await page.addScriptTag({ path: resolve("dist/assets/content.js") });
+  await page.waitForSelector("html[data-gptbd-ready='true']");
+
+  const actionBar = page.locator("[data-gptbd-action-bar='true']");
+  const headingRow = page.locator("[data-testid='history-heading-row']");
+  await expect(actionBar).toBeVisible();
+  await expect(headingRow).toBeVisible();
+  await expect(actionBar.locator("xpath=following-sibling::*[1]")).toHaveAttribute("data-testid", "history-heading-row");
+
+  const actionBarBox = await actionBar.boundingBox();
   const recentBox = await page.getByText("Recent", { exact: true }).boundingBox();
   expect(actionBarBox).not.toBeNull();
   expect(recentBox).not.toBeNull();
