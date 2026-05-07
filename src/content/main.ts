@@ -614,6 +614,7 @@ class BulkDeleteController {
           ok: false,
           error: getErrorMessage(error)
         });
+        break;
       }
 
       this.refresh();
@@ -850,15 +851,59 @@ async function applyConversationMenuAction(
   const actionItem = await openConversationMenuForAction(row, config.labels);
   clickElement(actionItem);
 
-  const confirmButton = config.requiresMenuConfirm
-    ? await waitFor(() => findDialogConfirmButton(config.confirmLabels), 3000)
-    : await waitFor(() => findDialogConfirmButton(config.confirmLabels), 900).catch(() => null);
+  if (config.requiresMenuConfirm) {
+    await confirmConversationDialog(row, config);
+  } else {
+    const confirmButton = await waitFor(
+      () => findDialogConfirmButton(config.confirmLabels),
+      900
+    ).catch(() => null);
 
-  if (confirmButton) {
-    clickElement(confirmButton);
+    if (confirmButton) {
+      clickElement(confirmButton);
+    }
   }
 
   await waitFor(() => !findAnchorByConversationId(row.id), 7000);
+}
+
+async function confirmConversationDialog(
+  row: ConversationRow,
+  config: BulkActionConfig
+): Promise<void> {
+  for (const activate of [
+    clickElement,
+    clickElement,
+    clickElement,
+    keyboardActivateElement,
+    spaceActivateElement
+  ]) {
+    const confirmButton = await waitFor(
+      () => findDialogConfirmButton(config.confirmLabels),
+      4000,
+      60
+    );
+    confirmButton.scrollIntoView({ block: "center", inline: "nearest" });
+    activate(confirmButton);
+
+    const deleted = await waitFor(
+      () => !findAnchorByConversationId(row.id),
+      1400,
+      80
+    ).catch(() => false);
+
+    if (deleted) {
+      return;
+    }
+
+    const currentButton = findDialogConfirmButton(config.confirmLabels);
+
+    if (!currentButton) {
+      break;
+    }
+  }
+
+  await waitFor(() => !findAnchorByConversationId(row.id), 5000, 100);
 }
 
 async function openConversationMenuForAction(
@@ -1027,7 +1072,7 @@ function findDialogConfirmButton(keywords: string[]): HTMLElement | null {
 
   for (const root of roots) {
     const buttons = Array.from(root.querySelectorAll<HTMLElement>('button,[role="button"]')).filter(
-      isVisibleElement
+      (button) => isVisibleElement(button) && isEnabledElement(button)
     );
     const match = buttons.find((button) => {
       const label = getAccessibleLabel(button);
@@ -1101,6 +1146,18 @@ function keyboardActivateElement(element: HTMLElement): void {
   element.dispatchEvent(new KeyboardEvent("keyup", keyboardInit));
 }
 
+function spaceActivateElement(element: HTMLElement): void {
+  element.focus({ preventScroll: true });
+  const keyboardInit: KeyboardEventInit = {
+    bubbles: true,
+    cancelable: true,
+    key: " ",
+    code: "Space"
+  };
+  element.dispatchEvent(new KeyboardEvent("keydown", keyboardInit));
+  element.dispatchEvent(new KeyboardEvent("keyup", keyboardInit));
+}
+
 function isVisibleElement(element: HTMLElement): boolean {
   const rect = element.getBoundingClientRect();
   const style = window.getComputedStyle(element);
@@ -1111,6 +1168,18 @@ function isVisibleElement(element: HTMLElement): boolean {
     style.display !== "none" &&
     Number(style.opacity || "1") > 0
   );
+}
+
+function isEnabledElement(element: HTMLElement): boolean {
+  if (element.hasAttribute("disabled") || element.getAttribute("aria-disabled") === "true") {
+    return false;
+  }
+
+  if (element instanceof HTMLButtonElement || element instanceof HTMLInputElement) {
+    return !element.disabled;
+  }
+
+  return true;
 }
 
 function getAccessibleLabel(element: HTMLElement): string {

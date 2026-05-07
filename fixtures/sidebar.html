@@ -191,6 +191,11 @@
             confirm.type = "button";
             confirm.textContent = "Delete";
             confirm.addEventListener("click", () => {
+              if (!confirm.dataset.acceptedOnce) {
+                confirm.dataset.acceptedOnce = "true";
+                return;
+              }
+
               removeRow(button);
               dialog.remove();
             });
