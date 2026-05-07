@@ -163,24 +163,27 @@ export const SHADOW_CSS = `
 
 .mode-toggle {
   position: relative;
-  width: 44px;
-  min-width: 44px !important;
-  height: 24px;
-  min-height: 24px !important;
+  display: block;
+  width: 36px;
+  min-width: 36px !important;
+  height: 20px;
+  min-height: 20px !important;
+  box-sizing: border-box;
   border-radius: 999px !important;
   padding: 0 !important;
+  line-height: 0 !important;
   background: color-mix(in srgb, CanvasText 9%, Canvas) !important;
 }
 
 .mode-toggle-thumb {
   position: absolute;
   top: 2px;
-  left: 3px;
-  width: 20px;
-  height: 20px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
   border-radius: 999px;
   background: CanvasText;
-  box-shadow: 0 1px 5px color-mix(in srgb, CanvasText 26%, transparent);
+  box-shadow: 0 1px 4px color-mix(in srgb, CanvasText 24%, transparent);
   transition: transform 140ms ease, background-color 140ms ease;
 }
 
@@ -190,7 +193,7 @@ export const SHADOW_CSS = `
 }
 
 .mode-toggle[aria-checked="true"] .mode-toggle-thumb {
-  transform: translateX(18px);
+  transform: translateX(16px);
   background: Canvas;
 }
 
