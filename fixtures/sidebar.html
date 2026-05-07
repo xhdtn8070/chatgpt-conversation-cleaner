@@ -76,6 +76,15 @@
         height: 28px;
       }
 
+      .danger-action,
+      .danger-confirm {
+        color: rgb(220, 38, 38);
+      }
+
+      .danger-confirm {
+        border-color: rgb(220, 38, 38);
+      }
+
       main {
         padding: 32px;
       }
@@ -171,7 +180,8 @@
           const del = document.createElement("button");
           del.type = "button";
           del.setAttribute("role", "menuitem");
-          del.textContent = "Delete";
+          del.className = "danger-action";
+          del.textContent = "Eliminar";
           del.addEventListener("click", () => {
             closeMenu();
             const dialog = document.createElement("section");
@@ -189,7 +199,8 @@
 
             const confirm = document.createElement("button");
             confirm.type = "button";
-            confirm.textContent = "Delete";
+            confirm.className = "danger-confirm";
+            confirm.textContent = "Eliminar";
             confirm.addEventListener("click", () => {
               if (!confirm.dataset.acceptedOnce) {
                 confirm.dataset.acceptedOnce = "true";

@@ -848,14 +848,14 @@ async function applyConversationMenuAction(
   revealRow(row.row);
   await delay(180);
 
-  const actionItem = await openConversationMenuForAction(row, config.labels);
+  const actionItem = await openConversationMenuForAction(row, config);
   clickElement(actionItem);
 
   if (config.requiresMenuConfirm) {
     await confirmConversationDialog(row, config);
   } else {
     const confirmButton = await waitFor(
-      () => findDialogConfirmButton(config.confirmLabels),
+      () => findDialogConfirmButton(config),
       900
     ).catch(() => null);
 
@@ -879,7 +879,7 @@ async function confirmConversationDialog(
     spaceActivateElement
   ]) {
     const confirmButton = await waitFor(
-      () => findDialogConfirmButton(config.confirmLabels),
+      () => findDialogConfirmButton(config),
       4000,
       60
     );
@@ -896,7 +896,7 @@ async function confirmConversationDialog(
       return;
     }
 
-    const currentButton = findDialogConfirmButton(config.confirmLabels);
+    const currentButton = findDialogConfirmButton(config);
 
     if (!currentButton) {
       break;
@@ -908,7 +908,7 @@ async function confirmConversationDialog(
 
 async function openConversationMenuForAction(
   row: ConversationRow,
-  actionLabels: string[]
+  config: BulkActionConfig
 ): Promise<HTMLElement> {
   const menuButton = await waitFor(() => findMenuButton(row.row), 2200);
   const cleanupExpose = forceExposeMenuButton(row.row, menuButton);
@@ -921,7 +921,7 @@ async function openConversationMenuForAction(
       try {
         activate(menuButton);
         actionItem = await waitFor(
-          () => findVisibleControlByText(actionLabels),
+          () => findVisibleMenuAction(config),
           1000,
           60
         ).catch(() => null);
@@ -1040,31 +1040,41 @@ function preventAnchorNavigation(anchor: HTMLAnchorElement): () => void {
   };
 }
 
-function findVisibleControlByText(keywords: string[]): HTMLElement | null {
+function findVisibleMenuAction(config: BulkActionConfig): HTMLElement | null {
   const menuRoots = Array.from(
     document.querySelectorAll<HTMLElement>(
-      '[role="menu"],[role="listbox"],[data-radix-popper-content-wrapper],dialog,[role="dialog"]'
+      '[role="menu"],[role="listbox"],[data-radix-popper-content-wrapper]'
     )
   ).filter(isVisibleElement);
   const roots = menuRoots.length > 0 ? menuRoots : [document.body];
 
-  const candidates = roots.flatMap((root) =>
-    Array.from(
-      root.querySelectorAll<HTMLElement>(
-        'button,[role="button"],[role="menuitem"],[role="option"],div[tabindex],span[tabindex]'
-      )
-    ).filter(isVisibleElement)
-  );
+  for (const root of roots) {
+    const candidates = findVisibleActionCandidates(root);
+    const textMatch = findByAccessibleLabel(candidates, config.labels);
 
-  return (
-    candidates.find((candidate) => {
-      const label = getAccessibleLabel(candidate);
-      return keywords.some((keyword) => label.includes(keyword));
-    }) ?? null
-  );
+    if (textMatch) {
+      return textMatch;
+    }
+
+    if (config.danger) {
+      const dangerMatch = candidates.find(isDangerElement);
+
+      if (dangerMatch) {
+        return dangerMatch;
+      }
+
+      const menuItems = candidates.filter((candidate) => getRole(candidate) === "menuitem");
+
+      if (menuItems.length >= 3) {
+        return menuItems.at(-1) ?? null;
+      }
+    }
+  }
+
+  return null;
 }
 
-function findDialogConfirmButton(keywords: string[]): HTMLElement | null {
+function findDialogConfirmButton(config: BulkActionConfig): HTMLElement | null {
   const dialogs = Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"],dialog')).filter(
     isVisibleElement
   );
@@ -1074,17 +1084,90 @@ function findDialogConfirmButton(keywords: string[]): HTMLElement | null {
     const buttons = Array.from(root.querySelectorAll<HTMLElement>('button,[role="button"]')).filter(
       (button) => isVisibleElement(button) && isEnabledElement(button)
     );
-    const match = buttons.find((button) => {
-      const label = getAccessibleLabel(button);
-      return keywords.some((keyword) => label.includes(keyword));
-    });
+    const dangerMatch = config.danger ? buttons.find(isDangerElement) : null;
+
+    if (dangerMatch) {
+      return dangerMatch;
+    }
+
+    const match = findByAccessibleLabel(buttons, config.confirmLabels);
 
     if (match) {
       return match;
     }
+
+    if (config.danger && buttons.length >= 2) {
+      return buttons.at(-1) ?? null;
+    }
   }
 
   return null;
+}
+
+function findVisibleActionCandidates(root: HTMLElement): HTMLElement[] {
+  return Array.from(
+    root.querySelectorAll<HTMLElement>(
+      'button,[role="button"],[role="menuitem"],[role="option"],div[tabindex],span[tabindex]'
+    )
+  ).filter(isVisibleElement);
+}
+
+function findByAccessibleLabel(
+  candidates: HTMLElement[],
+  keywords: string[]
+): HTMLElement | null {
+  return (
+    candidates.find((candidate) => {
+      const label = getAccessibleLabel(candidate);
+      return keywords.some((keyword) => label.includes(keyword));
+    }) ?? null
+  );
+}
+
+function isDangerElement(element: HTMLElement): boolean {
+  const attrValues = [
+    element.getAttribute("class"),
+    element.getAttribute("data-testid"),
+    element.getAttribute("data-variant"),
+    element.getAttribute("data-state"),
+    element.getAttribute("aria-label"),
+    element.getAttribute("title")
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (/\b(danger|destructive|error|critical)\b/.test(attrValues)) {
+    return true;
+  }
+
+  if (/(^|\s)(?:[\w-]+:)*(text|bg|border)-red[-\w/]*/.test(attrValues)) {
+    return true;
+  }
+
+  const elementsToCheck = [element, ...Array.from(element.querySelectorAll<HTMLElement>("svg,*"))];
+  return elementsToCheck.some((target) => {
+    const style = window.getComputedStyle(target);
+    return [style.color, style.backgroundColor, style.borderColor].some(isRedLikeColor);
+  });
+}
+
+function getRole(element: HTMLElement): string {
+  return element.getAttribute("role")?.toLowerCase() ?? "";
+}
+
+function isRedLikeColor(value: string): boolean {
+  const rgb = value.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+
+  if (!rgb) {
+    return false;
+  }
+
+  const red = Number(rgb[1]);
+  const green = Number(rgb[2]);
+  const blue = Number(rgb[3]);
+
+  return red >= 150 && red > green + 35 && red > blue + 35;
 }
 
 function findAnchorByConversationId(id: string): HTMLAnchorElement | null {
