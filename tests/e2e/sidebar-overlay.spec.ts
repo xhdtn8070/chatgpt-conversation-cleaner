@@ -48,11 +48,14 @@ test("content script renders stable checkbox overlay and isolates row clicks", a
 
   const actionBar = page.locator("#gptbd-root .action-bar");
   const modeSwitch = page.getByRole("switch", { name: "Bulk delete mode" });
-  await expect(modeSwitch).toHaveText("On");
+  await expect(modeSwitch).toHaveAttribute("aria-checked", "true");
+  await expect(modeSwitch.locator(".mode-toggle-thumb")).toBeVisible();
   await modeSwitch.click();
+  await expect(modeSwitch).toHaveAttribute("aria-checked", "false");
   await expect(page.getByText("Bulk delete off", { exact: true })).toBeVisible();
   await expect(page.getByRole("checkbox", { name: /select alpha planning thread/i })).toHaveCount(0);
   await modeSwitch.click();
+  await expect(modeSwitch).toHaveAttribute("aria-checked", "true");
   await expect(alphaCheckbox).toBeVisible();
 
   const actionBarBox = await actionBar.boundingBox();
@@ -63,6 +66,21 @@ test("content script renders stable checkbox overlay and isolates row clicks", a
   expect(sidebarBox).not.toBeNull();
   expect(actionBarBox!.y).toBeGreaterThanOrEqual(recentBox!.y + recentBox!.height - 2);
   expect(actionBarBox!.x + actionBarBox!.width).toBeLessThanOrEqual(sidebarBox!.x + sidebarBox!.width);
+  await expect(actionBar).toHaveAttribute("data-density", "compact");
+
+  const actionButtonRows = await page.locator("#gptbd-root .toolbar-actions button").evaluateAll((buttons) =>
+    Array.from(new Set(buttons.map((button) => Math.round(button.getBoundingClientRect().top))))
+  );
+  expect(actionButtonRows).toHaveLength(2);
+
+  await page.evaluate(() => window.__gptbdController?.setSidebarControls(false));
+  await expect(actionBar).toBeHidden();
+  await expect(page.locator("[data-gptbd-toolbar-spacer='true']")).toHaveCount(0);
+  await expect(alphaCheckbox).toBeVisible();
+
+  await page.evaluate(() => window.__gptbdController?.setSidebarControls(true));
+  await expect(actionBar).toBeVisible();
+  await expect(page.locator("[data-gptbd-toolbar-spacer='true']")).toHaveCount(1);
 
   await alphaCheckbox.click();
   await expect(page.locator("#row-alpha")).toHaveAttribute("data-gptbd-row-selected", "true");

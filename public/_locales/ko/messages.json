@@ -52,6 +52,15 @@
   "popupHintInitial": {
     "message": "ChatGPT를 열고 일괄 모드를 켜면 사이드바 체크박스가 표시됩니다."
   },
+  "popupSidebarPanelLabel": {
+    "message": "좌측 패널"
+  },
+  "popupSidebarPanelHint": {
+    "message": "ChatGPT 사이드바 안에 일괄 컨트롤을 표시합니다."
+  },
+  "popupSidebarPanelAria": {
+    "message": "좌측 일괄 컨트롤 표시"
+  },
   "languageToggleAria": {
     "message": "$LANGUAGE$로 전환",
     "placeholders": {

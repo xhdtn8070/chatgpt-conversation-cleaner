@@ -30,6 +30,9 @@ const EN_MESSAGES = {
   popupHintInitial: {
     message: "Open ChatGPT and turn on Bulk mode to show the sidebar checkbox lane."
   },
+  popupSidebarPanelLabel: { message: "Sidebar panel" },
+  popupSidebarPanelHint: { message: "Show bulk controls inside ChatGPT's sidebar." },
+  popupSidebarPanelAria: { message: "Show sidebar bulk controls" },
   languageToggleAria: { message: "Switch language to $language", placeholders: ["language"] },
   languageEnglish: { message: "English" },
   languageKorean: { message: "Korean" },
@@ -66,6 +69,9 @@ const KO_MESSAGES: Record<MessageKey, MessageDefinition> = {
   popupHintInitial: {
     message: "ChatGPT를 열고 일괄 모드를 켜면 사이드바 체크박스가 표시됩니다."
   },
+  popupSidebarPanelLabel: { message: "좌측 패널" },
+  popupSidebarPanelHint: { message: "ChatGPT 사이드바 안에 일괄 컨트롤을 표시합니다." },
+  popupSidebarPanelAria: { message: "좌측 일괄 컨트롤 표시" },
   languageToggleAria: { message: "$language로 전환", placeholders: ["language"] },
   languageEnglish: { message: "영어" },
   languageKorean: { message: "한국어" },

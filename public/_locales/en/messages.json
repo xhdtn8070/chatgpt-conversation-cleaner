@@ -52,6 +52,15 @@
   "popupHintInitial": {
     "message": "Open ChatGPT and turn on Bulk mode to show the sidebar checkbox lane."
   },
+  "popupSidebarPanelLabel": {
+    "message": "Sidebar panel"
+  },
+  "popupSidebarPanelHint": {
+    "message": "Show bulk controls inside ChatGPT's sidebar."
+  },
+  "popupSidebarPanelAria": {
+    "message": "Show sidebar bulk controls"
+  },
   "languageToggleAria": {
     "message": "Switch language to $LANGUAGE$",
     "placeholders": {

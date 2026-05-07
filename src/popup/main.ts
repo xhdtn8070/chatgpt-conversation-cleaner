@@ -29,6 +29,9 @@ const selectAll = getElement<HTMLButtonElement>("selectAll");
 const clear = getElement<HTMLButtonElement>("clear");
 const archiveButton = getElement<HTMLButtonElement>("archive");
 const deleteButton = getElement<HTMLButtonElement>("delete");
+const sidebarPanelLabel = getElement<HTMLElement>("sidebarPanelLabel");
+const sidebarPanelHint = getElement<HTMLElement>("sidebarPanelHint");
+const sidebarPanelToggle = getElement<HTMLButtonElement>("sidebarPanelToggle");
 const hint = getElement<HTMLElement>("hint");
 
 let currentState: ExtensionState | null = null;
@@ -43,6 +46,13 @@ bulkMode.addEventListener("change", () => {
 
 languageToggle.addEventListener("click", () => {
   void changeLanguage(currentLanguage === "ko" ? "en" : "ko");
+});
+
+sidebarPanelToggle.addEventListener("click", () => {
+  void sendAndRender({
+    type: MESSAGE_TYPES.setSidebarControls,
+    enabled: sidebarPanelToggle.getAttribute("aria-checked") !== "true"
+  });
 });
 
 selectAll.addEventListener("click", () => {
@@ -145,10 +155,12 @@ function renderState(state: ExtensionState): void {
   clear.textContent = t("actionClear");
   archiveButton.textContent = t("actionArchive");
   deleteButton.textContent = t("actionDelete");
+  sidebarPanelToggle.setAttribute("aria-checked", String(state.sidebarControls));
   selectAll.disabled = !enabled || state.visibleCount === 0;
   clear.disabled = !enabled || state.selectedCount === 0;
   archiveButton.disabled = !enabled || state.selectedCount === 0;
   deleteButton.disabled = !enabled || state.selectedCount === 0;
+  sidebarPanelToggle.disabled = state.isDeleting;
 }
 
 function renderUnavailable(): void {
@@ -162,10 +174,12 @@ function renderUnavailable(): void {
   clear.textContent = t("actionClear");
   archiveButton.textContent = t("actionArchive");
   deleteButton.textContent = t("actionDelete");
+  sidebarPanelToggle.setAttribute("aria-checked", "true");
   selectAll.disabled = true;
   clear.disabled = true;
   archiveButton.disabled = true;
   deleteButton.disabled = true;
+  sidebarPanelToggle.disabled = true;
 }
 
 function setBusy(isBusy: boolean): void {
@@ -176,6 +190,7 @@ function setBusy(isBusy: boolean): void {
   clear.disabled = !canUseActions || (state?.selectedCount ?? 0) === 0;
   archiveButton.disabled = !canUseActions || (state?.selectedCount ?? 0) === 0;
   deleteButton.disabled = !canUseActions || (state?.selectedCount ?? 0) === 0;
+  sidebarPanelToggle.disabled = isBusy || !state;
 }
 
 function isAllVisibleSelected(state: ExtensionState | null): boolean {
@@ -202,6 +217,10 @@ function applyStaticCopy(): void {
   clear.textContent = t("actionClear");
   archiveButton.textContent = t("actionArchive");
   deleteButton.textContent = t("actionDelete");
+  sidebarPanelLabel.textContent = t("popupSidebarPanelLabel");
+  sidebarPanelHint.textContent = t("popupSidebarPanelHint");
+  sidebarPanelToggle.title = t("popupSidebarPanelAria");
+  sidebarPanelToggle.setAttribute("aria-label", t("popupSidebarPanelAria"));
   hint.textContent = t("popupHintInitial");
 }
 

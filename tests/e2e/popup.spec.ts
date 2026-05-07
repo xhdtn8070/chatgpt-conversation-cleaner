@@ -11,7 +11,8 @@ declare global {
 test("popup switches between Korean and English UI", async ({ page }) => {
   await page.addInitScript(() => {
     const storage: Record<string, unknown> = {
-      "gptbd.language": "ko"
+      "gptbd.language": "ko",
+      "gptbd.sidebarControls": true
     };
 
     window.__popupStorage = storage;
@@ -35,9 +36,15 @@ test("popup switches between Korean and English UI", async ({ page }) => {
         async query() {
           return [{ id: 1 }];
         },
-        async sendMessage(_tabId: number, message: { type: string; language?: "en" | "ko" }) {
+        async sendMessage(
+          _tabId: number,
+          message: { type: string; language?: "en" | "ko"; enabled?: boolean }
+        ) {
           if (message.type === "GPTBD_SET_LANGUAGE" && message.language) {
             storage["gptbd.language"] = message.language;
+          }
+          if (message.type === "GPTBD_SET_SIDEBAR_CONTROLS") {
+            storage["gptbd.sidebarControls"] = Boolean(message.enabled);
           }
 
           return {
@@ -46,7 +53,8 @@ test("popup switches between Korean and English UI", async ({ page }) => {
             selectedCount: 0,
             visibleCount: 0,
             isDeleting: false,
-            language: storage["gptbd.language"] ?? "ko"
+            language: storage["gptbd.language"] ?? "ko",
+            sidebarControls: storage["gptbd.sidebarControls"] ?? true
           };
         }
       }
@@ -58,10 +66,21 @@ test("popup switches between Korean and English UI", async ({ page }) => {
 
   await expect(page.getByRole("heading", { name: "정리" })).toBeVisible();
   await expect(page.getByRole("button", { name: "영어로 전환" })).toHaveText("EN");
+  await expect(page.getByRole("switch", { name: "좌측 일괄 컨트롤 표시" })).toHaveAttribute(
+    "aria-checked",
+    "true"
+  );
 
   await page.getByRole("button", { name: "영어로 전환" }).click();
 
   await expect(page.getByRole("heading", { name: "Cleaner" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Switch language to Korean" })).toHaveText("KO");
   await expect.poll(() => page.evaluate(() => window.__popupStorage["gptbd.language"])).toBe("en");
+
+  await page.getByRole("switch", { name: "Show sidebar bulk controls" }).click();
+  await expect(page.getByRole("switch", { name: "Show sidebar bulk controls" })).toHaveAttribute(
+    "aria-checked",
+    "false"
+  );
+  await expect.poll(() => page.evaluate(() => window.__popupStorage["gptbd.sidebarControls"])).toBe(false);
 });

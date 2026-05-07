@@ -87,8 +87,8 @@ export const SHADOW_CSS = `
 .action-bar {
   position: fixed;
   display: grid;
-  gap: 6px;
-  padding: 6px;
+  gap: 8px;
+  padding: 8px;
   box-sizing: border-box;
   border: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
   border-radius: 8px;
@@ -97,14 +97,22 @@ export const SHADOW_CSS = `
   pointer-events: auto;
 }
 
+.action-bar[hidden] {
+  display: none;
+}
+
 .action-bar[data-mode="off"] {
   grid-template-rows: 1fr;
-  min-height: 36px;
+  min-height: 44px;
 }
 
 .action-bar[data-mode="on"] {
   grid-template-rows: auto auto;
-  min-height: 78px;
+  min-height: 86px;
+}
+
+.action-bar[data-mode="on"][data-density="compact"] {
+  min-height: 126px;
 }
 
 .toolbar-top {
@@ -117,18 +125,20 @@ export const SHADOW_CSS = `
 
 .toolbar-actions {
   display: grid;
-  grid-template-columns:
-    minmax(0, 0.6fr) minmax(0, 0.85fr)
-    minmax(0, 1.15fr) minmax(0, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
   min-width: 0;
+}
+
+.action-bar[data-density="compact"] .toolbar-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .selected-count {
   flex: 1 1 auto;
   min-width: 0;
   color: CanvasText;
-  font: 600 12px/1.2 ui-sans-serif, system-ui, sans-serif;
+  font: 700 13px/1.2 ui-sans-serif, system-ui, sans-serif;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -138,7 +148,7 @@ export const SHADOW_CSS = `
 .dialog button {
   flex: 0 0 auto;
   min-width: 0;
-  min-height: 28px;
+  min-height: 34px;
   border: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
   border-radius: 7px;
   background: color-mix(in srgb, CanvasText 5%, Canvas);
@@ -152,13 +162,36 @@ export const SHADOW_CSS = `
 }
 
 .mode-toggle {
-  min-width: 50px !important;
+  position: relative;
+  width: 62px;
+  min-width: 62px !important;
+  height: 34px;
+  min-height: 34px !important;
   border-radius: 999px !important;
+  padding: 0 !important;
+  background: color-mix(in srgb, CanvasText 9%, Canvas) !important;
+}
+
+.mode-toggle-thumb {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: CanvasText;
+  box-shadow: 0 1px 5px color-mix(in srgb, CanvasText 26%, transparent);
+  transition: transform 140ms ease, background-color 140ms ease;
 }
 
 .mode-toggle[aria-checked="true"] {
   border-color: #0f7a55 !important;
-  background: color-mix(in srgb, #0f7a55 22%, Canvas) !important;
+  background: #0f7a55 !important;
+}
+
+.mode-toggle[aria-checked="true"] .mode-toggle-thumb {
+  transform: translateX(28px);
+  background: Canvas;
 }
 
 .action-bar button:hover,
@@ -291,5 +324,11 @@ html.gptbd-bulk-active [data-gptbd-force-menu="true"] button[aria-label*="option
   flex: 0 0 86px !important;
   height: 86px !important;
   min-height: 86px !important;
+}
+
+[data-gptbd-toolbar-spacer="true"][data-gptbd-mode="on"][data-gptbd-density="compact"] {
+  flex: 0 0 128px !important;
+  height: 128px !important;
+  min-height: 128px !important;
 }
 `;

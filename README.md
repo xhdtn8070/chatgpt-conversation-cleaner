@@ -38,6 +38,7 @@ The goal is a calmer cleanup flow:
 - Local settings only through `chrome.storage.local`.
 - English and Korean extension UI through Chrome i18n locales.
 - Popup language toggle for switching the extension UI between English and Korean.
+- Optional sidebar control panel when you prefer controlling everything from the extension popup.
 
 ## Safety Model
 
