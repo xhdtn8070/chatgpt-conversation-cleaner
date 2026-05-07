@@ -134,7 +134,6 @@ class BulkDeleteController {
   private dialogHost: HTMLElement;
   private busyShield: HTMLElement;
   private notice: HTMLElement;
-  private toolbarSpacer: HTMLElement;
   private observer: MutationObserver;
   private refreshQueued = false;
   private isDeleting = false;
@@ -189,19 +188,17 @@ class BulkDeleteController {
 
     this.checkboxLayer = document.createElement("div");
     this.actionBar = document.createElement("div");
+    this.actionBar.dataset.gptbdActionBar = "true";
     this.dialogHost = document.createElement("div");
     this.busyShield = document.createElement("div");
     this.busyShield.className = "busy-shield";
     this.busyShield.hidden = true;
-    this.toolbarSpacer = document.createElement("div");
-    this.toolbarSpacer.dataset.gptbdToolbarSpacer = "true";
     this.notice = document.createElement("div");
     this.notice.className = "notice";
     this.notice.hidden = true;
 
     this.overlayRoot.append(
       this.checkboxLayer,
-      this.actionBar,
       this.dialogHost,
       this.busyShield,
       this.notice
@@ -279,7 +276,7 @@ class BulkDeleteController {
     void storageSet(STORAGE_KEYS.extensionEnabled, enabled);
     await this.speedControls.setEnabled(enabled && this.speedMode);
 
-    this.syncToolbarSpacer();
+    this.syncActionBarPlacement();
     this.refreshRows();
     this.render({ recollectOnSpacerChange: false });
     return this.getState();
@@ -292,7 +289,7 @@ class BulkDeleteController {
 
     this.bulkMode = enabled;
     void storageSet(STORAGE_KEYS.bulkMode, enabled);
-    this.syncToolbarSpacer();
+    this.syncActionBarPlacement();
     this.refreshRows();
     this.render({ recollectOnSpacerChange: false });
     return this.getState();
@@ -481,7 +478,7 @@ class BulkDeleteController {
     this.host.toggleAttribute("data-active", this.extensionEnabled && this.bulkMode);
     this.clearRowHighlights();
     this.applyRowHighlights();
-    if (this.syncToolbarSpacer() && recollectOnSpacerChange) {
+    if (this.syncActionBarPlacement() && recollectOnSpacerChange) {
       this.refreshRows();
     }
     this.renderSelectionLayer();
@@ -586,25 +583,15 @@ class BulkDeleteController {
     this.actionBar.className = "action-bar";
     this.actionBar.dataset.mode = this.bulkMode ? "on" : "off";
     this.actionBar.hidden =
-      !this.extensionEnabled || !this.sidebarControls || !this.toolbarSpacer.isConnected;
+      !this.extensionEnabled || !this.sidebarControls || !this.actionBar.isConnected;
 
-    if (!this.extensionEnabled || !this.sidebarControls || !this.toolbarSpacer.isConnected) {
+    if (!this.extensionEnabled || !this.sidebarControls || !this.actionBar.isConnected) {
       this.actionBar.replaceChildren();
-      this.actionBar.removeAttribute("style");
       return;
     }
 
-    const sidebarRect = this.getSidebarRect();
-    const toolbarRect = this.toolbarSpacer.isConnected
-      ? this.toolbarSpacer.getBoundingClientRect()
-      : null;
-    const metrics = this.getActionBarMetrics(sidebarRect);
+    const metrics = this.getActionBarMetrics(this.getSidebarRect());
     this.actionBar.dataset.density = metrics.density;
-    this.toolbarSpacer.dataset.gptbdDensity = metrics.density;
-    this.actionBar.style.left = `${metrics.left}px`;
-    this.actionBar.style.top = `${this.getActionBarTop(sidebarRect, toolbarRect)}px`;
-    this.actionBar.style.bottom = "auto";
-    this.actionBar.style.width = `${metrics.width}px`;
 
     const topRow = document.createElement("div");
     topRow.className = "toolbar-top";
@@ -679,33 +666,35 @@ class BulkDeleteController {
     this.actionBar.replaceChildren(topRow, actionsRow);
   }
 
-  private syncToolbarSpacer(): boolean {
+  private syncActionBarPlacement(): boolean {
     let changed = false;
     const anchor = this.findHistoryHeader();
 
     if (!this.extensionEnabled || !anchor || !this.sidebarControls) {
-      changed = this.toolbarSpacer.isConnected;
-      this.toolbarSpacer.remove();
+      changed = this.actionBar.isConnected;
+      this.actionBar.remove();
       return changed;
     }
 
-    if (this.toolbarSpacer.dataset.gptbdMode !== (this.bulkMode ? "on" : "off")) {
-      changed = true;
-    }
-    this.toolbarSpacer.dataset.gptbdMode = this.bulkMode ? "on" : "off";
-    const density = this.getActionBarMetrics(this.getSidebarRect()).density;
-    if (this.toolbarSpacer.dataset.gptbdDensity !== density) {
-      changed = true;
-    }
-    this.toolbarSpacer.dataset.gptbdDensity = density;
+    this.actionBar.hidden = false;
 
-    if (this.toolbarSpacer.parentElement !== anchor.parentElement) {
-      anchor.after(this.toolbarSpacer);
+    if (this.actionBar.dataset.mode !== (this.bulkMode ? "on" : "off")) {
+      changed = true;
+    }
+    this.actionBar.dataset.mode = this.bulkMode ? "on" : "off";
+    const density = this.getActionBarMetrics(this.getSidebarRect()).density;
+    if (this.actionBar.dataset.density !== density) {
+      changed = true;
+    }
+    this.actionBar.dataset.density = density;
+
+    if (this.actionBar.parentElement !== anchor.parentElement) {
+      anchor.before(this.actionBar);
       return true;
     }
 
-    if (this.toolbarSpacer.previousElementSibling !== anchor) {
-      anchor.after(this.toolbarSpacer);
+    if (this.actionBar.nextElementSibling !== anchor) {
+      anchor.before(this.actionBar);
       return true;
     }
 
@@ -922,7 +911,11 @@ class BulkDeleteController {
 
     return Array.from(sidebarRoot.querySelectorAll<HTMLElement>("div,p,span,h2,h3"))
       .filter((element) => {
-        if (element === this.toolbarSpacer || element.querySelector('a[href*="/c/"]')) {
+        if (
+          element === this.actionBar ||
+          element.closest('[data-gptbd-action-bar="true"]') ||
+          element.querySelector('a[href*="/c/"]')
+        ) {
           return false;
         }
 
@@ -937,20 +930,6 @@ class BulkDeleteController {
         );
       })
       .sort((a, b) => b.getBoundingClientRect().top - a.getBoundingClientRect().top)[0] ?? null;
-  }
-
-  private getActionBarTop(sidebarRect: DOMRect, toolbarRect: DOMRect | null): number {
-    if (toolbarRect && toolbarRect.height > 0) {
-      return Math.round(toolbarRect.top + 4);
-    }
-
-    const firstRow = this.rows.values().next().value;
-
-    if (firstRow) {
-      return Math.max(sidebarRect.top + 8, Math.round(firstRow.rect.top - 48));
-    }
-
-    return Math.max(sidebarRect.top + 8, 8);
   }
 
   private getActionBarMetrics(sidebarRect: DOMRect): {
@@ -1019,7 +998,14 @@ class BulkDeleteController {
   private isOwnMutation(mutation: MutationRecord): boolean {
     const nodes = [...Array.from(mutation.addedNodes), ...Array.from(mutation.removedNodes)];
 
-    return nodes.length > 0 && nodes.every((node) => node === this.toolbarSpacer);
+    return (
+      mutation.target === this.actionBar ||
+      this.actionBar.contains(mutation.target) ||
+      (nodes.length > 0 &&
+        nodes.every(
+          (node) => node === this.actionBar || (node instanceof Node && this.actionBar.contains(node))
+        ))
+    );
   }
 
   private selectableRows(): ConversationRow[] {
