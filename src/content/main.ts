@@ -15,7 +15,7 @@ import {
   type MessageKey
 } from "./i18n";
 import { clearSelection, removeSelected, selectAll, toggleSelection } from "./selection";
-import { SpeedControls } from "./speed-controls";
+import { SPEED_DEFAULTS, SpeedControls, type SpeedSettings } from "./speed-controls";
 import { DOCUMENT_CSS, SHADOW_CSS } from "./styles";
 
 const ROOT_ID = "gptbd-root";
@@ -24,12 +24,16 @@ const STORAGE_KEYS = {
   bulkMode: "gptbd.bulkMode",
   language: "gptbd.language",
   sidebarControls: "gptbd.sidebarControls",
-  speedMode: "gptbd.speedMode"
+  speedMode: "gptbd.speedMode",
+  speedVisibleMessages: "gptbd.speedVisibleMessages",
+  speedBatchMessages: "gptbd.speedBatchMessages"
 } as const;
 const FIRST_RUN_DEFAULTS = {
   bulkMode: false,
   sidebarControls: true,
-  speedMode: false
+  speedMode: false,
+  speedVisibleMessages: 10,
+  speedBatchMessages: 2
 } as const;
 const MESSAGE_TYPES = {
   getState: "GPTBD_GET_STATE",
@@ -37,6 +41,7 @@ const MESSAGE_TYPES = {
   setLanguage: "GPTBD_SET_LANGUAGE",
   setSidebarControls: "GPTBD_SET_SIDEBAR_CONTROLS",
   setSpeedMode: "GPTBD_SET_SPEED_MODE",
+  setSpeedSettings: "GPTBD_SET_SPEED_SETTINGS",
   selectAllVisible: "GPTBD_SELECT_ALL_VISIBLE",
   clearSelection: "GPTBD_CLEAR_SELECTION",
   archiveSelected: "GPTBD_ARCHIVE_SELECTED",
@@ -113,6 +118,7 @@ class BulkDeleteController {
   private language: LanguageCode = getDefaultLanguage();
   private sidebarControls = true;
   private speedMode = false;
+  private speedSettings: SpeedSettings = { ...SPEED_DEFAULTS };
   private selectedIds = new Set<string>();
   private rows = new Map<string, ConversationRow>();
   private speedControls = new SpeedControls();
@@ -215,9 +221,23 @@ class BulkDeleteController {
       FIRST_RUN_DEFAULTS.sidebarControls
     );
     this.speedMode = await storageGet(STORAGE_KEYS.speedMode, FIRST_RUN_DEFAULTS.speedMode);
+    this.speedSettings = {
+      visibleMessages: clampNumber(
+        await storageGet(STORAGE_KEYS.speedVisibleMessages, FIRST_RUN_DEFAULTS.speedVisibleMessages),
+        1,
+        100,
+        FIRST_RUN_DEFAULTS.speedVisibleMessages
+      ),
+      batchMessages: clampNumber(
+        await storageGet(STORAGE_KEYS.speedBatchMessages, FIRST_RUN_DEFAULTS.speedBatchMessages),
+        1,
+        50,
+        FIRST_RUN_DEFAULTS.speedBatchMessages
+      )
+    };
     setActiveLanguage(this.language);
     this.syncStaticI18n();
-    this.speedControls.init(this.speedMode, this.language);
+    this.speedControls.init(this.speedMode, this.language, this.speedSettings);
     this.bindRuntimeMessages();
     this.bindPageListeners();
     this.observer.observe(document.body, { childList: true, subtree: true });
@@ -235,6 +255,8 @@ class BulkDeleteController {
       language: this.language,
       sidebarControls: this.sidebarControls,
       speedMode: this.speedMode,
+      speedVisibleMessages: this.speedSettings.visibleMessages,
+      speedBatchMessages: this.speedSettings.batchMessages,
       lastDeleteSummary: this.lastDeleteSummary
     };
   }
@@ -281,6 +303,17 @@ class BulkDeleteController {
     this.speedMode = enabled;
     void storageSet(STORAGE_KEYS.speedMode, enabled);
     await this.speedControls.setEnabled(enabled);
+    return this.getState();
+  }
+
+  async setSpeedSettings(settings: SpeedSettings): Promise<ExtensionState> {
+    this.speedSettings = {
+      visibleMessages: clampNumber(settings.visibleMessages, 1, 100, SPEED_DEFAULTS.visibleMessages),
+      batchMessages: clampNumber(settings.batchMessages, 1, 50, SPEED_DEFAULTS.batchMessages)
+    };
+    void storageSet(STORAGE_KEYS.speedVisibleMessages, this.speedSettings.visibleMessages);
+    void storageSet(STORAGE_KEYS.speedBatchMessages, this.speedSettings.batchMessages);
+    this.speedControls.setSettings(this.speedSettings);
     return this.getState();
   }
 
@@ -340,6 +373,8 @@ class BulkDeleteController {
             language: this.language,
             sidebarControls: this.sidebarControls,
             speedMode: this.speedMode,
+            speedVisibleMessages: this.speedSettings.visibleMessages,
+            speedBatchMessages: this.speedSettings.batchMessages,
             error: getErrorMessage(error)
           });
         });
@@ -361,6 +396,11 @@ class BulkDeleteController {
         return this.setSidebarControls(message.enabled);
       case MESSAGE_TYPES.setSpeedMode:
         return this.setSpeedMode(message.enabled);
+      case MESSAGE_TYPES.setSpeedSettings:
+        return this.setSpeedSettings({
+          visibleMessages: message.visibleMessages,
+          batchMessages: message.batchMessages
+        });
       case MESSAGE_TYPES.selectAllVisible:
         return this.selectAllVisible();
       case MESSAGE_TYPES.clearSelection:
@@ -1683,6 +1723,12 @@ function truncate(value: string, maxLength: number): string {
 
 function normalizeToolbarText(value: string): string {
   return value.replace(/\s+/g, " ").trim();
+}
+
+function clampNumber(value: unknown, min: number, max: number, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.min(max, Math.max(min, Math.floor(value)))
+    : fallback;
 }
 
 function getErrorMessage(error: unknown): string {

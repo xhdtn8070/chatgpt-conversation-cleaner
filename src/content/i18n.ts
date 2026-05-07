@@ -60,8 +60,8 @@ const EN_MESSAGES = {
   },
   speedModeAria: { message: "Speed mode for long conversations" },
   speedHiddenSummary: {
-    message: "$hidden hidden · $visible shown",
-    placeholders: ["hidden", "visible"]
+    message: "$hidden hidden · $visible shown · initial $initial",
+    placeholders: ["hidden", "visible", "initial"]
   },
   speedLoadMore: { message: "Load $count more", placeholders: ["count"] },
   speedViewAll: { message: "View all" },
@@ -130,8 +130,8 @@ const KO_MESSAGES: Record<MessageKey, MessageDefinition> = {
   },
   speedModeAria: { message: "긴 대화 속도 모드" },
   speedHiddenSummary: {
-    message: "$hidden개 숨김 · $visible개 표시 중",
-    placeholders: ["hidden", "visible"]
+    message: "$hidden개 숨김 · $visible개 표시 중 · 초기 $initial개",
+    placeholders: ["hidden", "visible", "initial"]
   },
   speedLoadMore: { message: "$count개 더 보기", placeholders: ["count"] },
   speedViewAll: { message: "전체 보기" },

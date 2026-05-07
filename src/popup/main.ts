@@ -35,7 +35,15 @@ const sidebarPanelHint = getElement<HTMLElement>("sidebarPanelHint");
 const sidebarPanelToggle = getElement<HTMLButtonElement>("sidebarPanelToggle");
 const speedModeLabel = getElement<HTMLElement>("speedModeLabel");
 const speedModeHint = getElement<HTMLElement>("speedModeHint");
+const speedModeSummary = getElement<HTMLElement>("speedModeSummary");
 const speedModeToggle = getElement<HTMLButtonElement>("speedModeToggle");
+const speedSettings = getElement<HTMLElement>("speedSettings");
+const speedVisibleLabel = getElement<HTMLElement>("speedVisibleLabel");
+const speedVisibleMessages = getElement<HTMLInputElement>("speedVisibleMessages");
+const speedBatchLabel = getElement<HTMLElement>("speedBatchLabel");
+const speedBatchMessages = getElement<HTMLInputElement>("speedBatchMessages");
+const speedSettingsSave = getElement<HTMLButtonElement>("speedSettingsSave");
+const speedSettingsSaved = getElement<HTMLElement>("speedSettingsSaved");
 const hint = getElement<HTMLElement>("hint");
 
 let currentState: ExtensionState | null = null;
@@ -64,6 +72,10 @@ speedModeToggle.addEventListener("click", () => {
     type: MESSAGE_TYPES.setSpeedMode,
     enabled: speedModeToggle.getAttribute("aria-checked") !== "true"
   });
+});
+
+speedSettingsSave.addEventListener("click", () => {
+  void saveSpeedSettings();
 });
 
 selectAll.addEventListener("click", () => {
@@ -168,12 +180,16 @@ function renderState(state: ExtensionState): void {
   deleteButton.textContent = t("actionDelete");
   sidebarPanelToggle.setAttribute("aria-checked", String(state.sidebarControls));
   speedModeToggle.setAttribute("aria-checked", String(state.speedMode));
+  renderSpeedSettings(state);
   selectAll.disabled = !enabled || state.visibleCount === 0;
   clear.disabled = !enabled || state.selectedCount === 0;
   archiveButton.disabled = !enabled || state.selectedCount === 0;
   deleteButton.disabled = !enabled || state.selectedCount === 0;
   sidebarPanelToggle.disabled = state.isDeleting;
   speedModeToggle.disabled = state.isDeleting;
+  speedVisibleMessages.disabled = state.isDeleting;
+  speedBatchMessages.disabled = state.isDeleting;
+  speedSettingsSave.disabled = state.isDeleting;
 }
 
 function renderUnavailable(): void {
@@ -189,12 +205,23 @@ function renderUnavailable(): void {
   deleteButton.textContent = t("actionDelete");
   sidebarPanelToggle.setAttribute("aria-checked", String(FIRST_RUN_DEFAULTS.sidebarControls));
   speedModeToggle.setAttribute("aria-checked", String(FIRST_RUN_DEFAULTS.speedMode));
+  speedVisibleMessages.value = String(FIRST_RUN_DEFAULTS.speedVisibleMessages);
+  speedBatchMessages.value = String(FIRST_RUN_DEFAULTS.speedBatchMessages);
+  speedModeSummary.textContent = t("popupSpeedSummary", {
+    visible: FIRST_RUN_DEFAULTS.speedVisibleMessages,
+    batch: FIRST_RUN_DEFAULTS.speedBatchMessages
+  });
+  speedSettings.hidden = true;
+  speedSettingsSaved.textContent = "";
   selectAll.disabled = true;
   clear.disabled = true;
   archiveButton.disabled = true;
   deleteButton.disabled = true;
   sidebarPanelToggle.disabled = true;
   speedModeToggle.disabled = true;
+  speedVisibleMessages.disabled = true;
+  speedBatchMessages.disabled = true;
+  speedSettingsSave.disabled = true;
 }
 
 function setBusy(isBusy: boolean): void {
@@ -207,6 +234,9 @@ function setBusy(isBusy: boolean): void {
   deleteButton.disabled = !canUseActions || (state?.selectedCount ?? 0) === 0;
   sidebarPanelToggle.disabled = isBusy || !state;
   speedModeToggle.disabled = isBusy || !state;
+  speedVisibleMessages.disabled = isBusy || !state;
+  speedBatchMessages.disabled = isBusy || !state;
+  speedSettingsSave.disabled = isBusy || !state;
 }
 
 function isAllVisibleSelected(state: ExtensionState | null): boolean {
@@ -241,6 +271,10 @@ function applyStaticCopy(): void {
   speedModeHint.textContent = t("popupSpeedModeHint");
   speedModeToggle.title = t("popupSpeedModeAria");
   speedModeToggle.setAttribute("aria-label", t("popupSpeedModeAria"));
+  speedSettings.setAttribute("aria-label", t("popupSpeedSettingsAria"));
+  speedVisibleLabel.textContent = t("popupSpeedVisibleLabel");
+  speedBatchLabel.textContent = t("popupSpeedBatchLabel");
+  speedSettingsSave.textContent = t("popupSpeedSave");
   hint.textContent = t("popupHintInitial");
 }
 
@@ -261,6 +295,36 @@ async function loadLanguagePreference(): Promise<LanguagePreference> {
 
 async function persistLanguagePreference(language: LanguagePreference): Promise<void> {
   await chrome.storage.local.set({ [STORAGE_KEYS.language]: language });
+}
+
+function renderSpeedSettings(state: ExtensionState): void {
+  speedVisibleMessages.value = String(state.speedVisibleMessages);
+  speedBatchMessages.value = String(state.speedBatchMessages);
+  speedModeSummary.textContent = t("popupSpeedSummary", {
+    visible: state.speedVisibleMessages,
+    batch: state.speedBatchMessages
+  });
+  speedSettings.hidden = !state.speedMode;
+  speedSettingsSaved.textContent = "";
+}
+
+async function saveSpeedSettings(): Promise<void> {
+  const state = currentState;
+
+  if (!state) {
+    return;
+  }
+
+  await sendAndRender({
+    type: MESSAGE_TYPES.setSpeedSettings,
+    visibleMessages: clampNumber(speedVisibleMessages.valueAsNumber, 1, 100),
+    batchMessages: clampNumber(speedBatchMessages.valueAsNumber, 1, 50)
+  });
+  speedSettingsSaved.textContent = t("popupSpeedSaved");
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  return Number.isFinite(value) ? Math.min(max, Math.max(min, Math.floor(value))) : min;
 }
 
 function getElement<T extends HTMLElement>(id: string): T {

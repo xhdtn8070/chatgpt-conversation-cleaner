@@ -8,7 +8,7 @@ import {
 
 const PAGE_SOURCE = "gptbd-main";
 const CONTENT_SOURCE = "gptbd-content";
-const BRIDGE_KEY = "gptbd.speedBridge";
+const BRIDGE_KEY = "gptbd.speedBridge.v2";
 const BYPASS_KEY = "gptbd.speedBypassOnce";
 const TRIMMED_ATTR = "data-gptbd-speed-trimmed";
 const CONVERSATION_ATTR = "data-gptbd-speed-conversation-id";
@@ -337,7 +337,7 @@ function normalizeSettings(input: unknown): SpeedSettings {
 
   return {
     enabled: typeof raw.enabled === "boolean" ? raw.enabled : DEFAULT_SETTINGS.enabled,
-    visibleMessages: DEFAULT_SETTINGS.visibleMessages,
+    visibleMessages: clampNumber(raw.visibleMessages, DEFAULT_SETTINGS.visibleMessages, 1, 100),
     batchMessages: clampNumber(raw.batchMessages, DEFAULT_SETTINGS.batchMessages, 1, 50)
   };
 }

@@ -2,13 +2,17 @@ export const STORAGE_KEYS = {
   bulkMode: "gptbd.bulkMode",
   language: "gptbd.language",
   sidebarControls: "gptbd.sidebarControls",
-  speedMode: "gptbd.speedMode"
+  speedMode: "gptbd.speedMode",
+  speedVisibleMessages: "gptbd.speedVisibleMessages",
+  speedBatchMessages: "gptbd.speedBatchMessages"
 } as const;
 
 export const FIRST_RUN_DEFAULTS = {
   bulkMode: false,
   sidebarControls: true,
-  speedMode: false
+  speedMode: false,
+  speedVisibleMessages: 10,
+  speedBatchMessages: 2
 } as const;
 
 export const MESSAGE_TYPES = {
@@ -17,6 +21,7 @@ export const MESSAGE_TYPES = {
   setLanguage: "GPTBD_SET_LANGUAGE",
   setSidebarControls: "GPTBD_SET_SIDEBAR_CONTROLS",
   setSpeedMode: "GPTBD_SET_SPEED_MODE",
+  setSpeedSettings: "GPTBD_SET_SPEED_SETTINGS",
   selectAllVisible: "GPTBD_SELECT_ALL_VISIBLE",
   clearSelection: "GPTBD_CLEAR_SELECTION",
   archiveSelected: "GPTBD_ARCHIVE_SELECTED",
@@ -48,6 +53,8 @@ export type ExtensionState = {
   language: LanguagePreference;
   sidebarControls: boolean;
   speedMode: boolean;
+  speedVisibleMessages: number;
+  speedBatchMessages: number;
   lastDeleteSummary?: DeleteSummary;
 };
 
@@ -57,6 +64,11 @@ export type ExtensionMessage =
   | { type: typeof MESSAGE_TYPES.setLanguage; language: LanguagePreference }
   | { type: typeof MESSAGE_TYPES.setSidebarControls; enabled: boolean }
   | { type: typeof MESSAGE_TYPES.setSpeedMode; enabled: boolean }
+  | {
+      type: typeof MESSAGE_TYPES.setSpeedSettings;
+      visibleMessages: number;
+      batchMessages: number;
+    }
   | { type: typeof MESSAGE_TYPES.selectAllVisible }
   | { type: typeof MESSAGE_TYPES.clearSelection }
   | { type: typeof MESSAGE_TYPES.archiveSelected }

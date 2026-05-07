@@ -1,10 +1,14 @@
 import { t, type LanguageCode, type MessageKey } from "./i18n";
 
-export const SPEED_BRIDGE_KEY = "gptbd.speedBridge";
+export const SPEED_BRIDGE_KEY = "gptbd.speedBridge.v2";
 export const SPEED_DEFAULTS = {
   visibleMessages: 10,
   batchMessages: 2
 } as const;
+export type SpeedSettings = {
+  visibleMessages: number;
+  batchMessages: number;
+};
 
 const CONTENT_SOURCE = "gptbd-content";
 const PAGE_SOURCE = "gptbd-main";
@@ -48,6 +52,7 @@ type PendingRequest = {
 export class SpeedControls {
   private enabled = false;
   private language: LanguageCode = "en";
+  private settings: SpeedSettings = { ...SPEED_DEFAULTS };
   private renderedOlderCount = 0;
   private currentConversationId: string | null = null;
   private root: HTMLElement | null = null;
@@ -58,9 +63,10 @@ export class SpeedControls {
   private lastUrl = window.location.href;
   private urlPoll: number | null = null;
 
-  init(enabled: boolean, language: LanguageCode): void {
+  init(enabled: boolean, language: LanguageCode, settings: SpeedSettings): void {
     this.enabled = enabled;
     this.language = language;
+    this.settings = settings;
     this.writeBridge();
     this.bindPageMessages();
     this.bindObservers();
@@ -102,6 +108,12 @@ export class SpeedControls {
 
   setLanguage(language: LanguageCode): void {
     this.language = language;
+    this.scheduleRefresh();
+  }
+
+  setSettings(settings: SpeedSettings): void {
+    this.settings = settings;
+    this.writeBridge();
     this.scheduleRefresh();
   }
 
@@ -233,7 +245,8 @@ export class SpeedControls {
     if (summary) {
       summary.textContent = t("speedHiddenSummary", {
         hidden: hiddenRemaining,
-        visible: (status.nativeVisible ?? 0) + this.renderedOlderCount
+        visible: (status.nativeVisible ?? 0) + this.renderedOlderCount,
+        initial: status.visibleMessages
       });
     }
 
@@ -426,8 +439,8 @@ export class SpeedControls {
   private writeBridge(): void {
     const settings = {
       enabled: this.enabled,
-      visibleMessages: SPEED_DEFAULTS.visibleMessages,
-      batchMessages: SPEED_DEFAULTS.batchMessages
+      visibleMessages: this.settings.visibleMessages,
+      batchMessages: this.settings.batchMessages
     };
 
     try {

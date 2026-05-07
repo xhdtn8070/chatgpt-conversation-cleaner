@@ -46,6 +46,7 @@ The goal is a calmer cleanup flow:
 ### Long-Chat Speed Mode
 
 - Optional Speed mode toggle in the popup.
+- Configurable initial render count and load-more batch size when Speed mode is enabled.
 - MAIN-world `fetch` interception at `document_start` for ChatGPT conversation detail API responses.
 - Keeps only the latest 10 messages in ChatGPT's native render path by default.
 - Keeps the original response in page memory only, so `Load 2 more` can reveal older messages in lightweight extension-rendered cards without another API call.

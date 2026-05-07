@@ -64,6 +64,7 @@
         <div>
           <strong id="speedModeLabel">Speed mode</strong>
           <span id="speedModeHint">Open long chats with only recent messages rendered first.</span>
+          <span id="speedModeSummary">Initial 10 · Load 2 each</span>
         </div>
         <button
           id="speedModeToggle"
@@ -74,6 +75,19 @@
         >
           <span aria-hidden="true"></span>
         </button>
+      </section>
+
+      <section id="speedSettings" class="speed-settings" aria-label="Speed mode settings" hidden>
+        <label>
+          <span id="speedVisibleLabel">Initial messages</span>
+          <input id="speedVisibleMessages" type="number" min="1" max="100" step="1" value="10" />
+        </label>
+        <label>
+          <span id="speedBatchLabel">Load more size</span>
+          <input id="speedBatchMessages" type="number" min="1" max="50" step="1" value="2" />
+        </label>
+        <button id="speedSettingsSave" type="button">Save</button>
+        <span id="speedSettingsSaved" class="saved-status" aria-live="polite"></span>
       </section>
 
       <p id="hint" class="hint">

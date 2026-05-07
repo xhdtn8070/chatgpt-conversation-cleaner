@@ -38,6 +38,15 @@ const EN_MESSAGES = {
     message: "Open long chats with only recent messages rendered first."
   },
   popupSpeedModeAria: { message: "Speed mode for long conversations" },
+  popupSpeedSummary: {
+    message: "Initial $visible · Load $batch each",
+    placeholders: ["visible", "batch"]
+  },
+  popupSpeedSettingsAria: { message: "Speed mode settings" },
+  popupSpeedVisibleLabel: { message: "Initial messages" },
+  popupSpeedBatchLabel: { message: "Load more size" },
+  popupSpeedSave: { message: "Save" },
+  popupSpeedSaved: { message: "Saved" },
   languageToggleAria: { message: "Switch language to $language", placeholders: ["language"] },
   languageEnglish: { message: "English" },
   languageKorean: { message: "Korean" },
@@ -80,6 +89,15 @@ const KO_MESSAGES: Record<MessageKey, MessageDefinition> = {
   popupSpeedModeLabel: { message: "속도 모드" },
   popupSpeedModeHint: { message: "긴 대화는 최근 메시지만 먼저 렌더링합니다." },
   popupSpeedModeAria: { message: "긴 대화 속도 모드" },
+  popupSpeedSummary: {
+    message: "초기 $visible개 · 더보기 $batch개씩",
+    placeholders: ["visible", "batch"]
+  },
+  popupSpeedSettingsAria: { message: "속도 모드 설정" },
+  popupSpeedVisibleLabel: { message: "초기 표시" },
+  popupSpeedBatchLabel: { message: "더보기 개수" },
+  popupSpeedSave: { message: "저장" },
+  popupSpeedSaved: { message: "저장됨" },
   languageToggleAria: { message: "$language로 전환", placeholders: ["language"] },
   languageEnglish: { message: "영어" },
   languageKorean: { message: "한국어" },

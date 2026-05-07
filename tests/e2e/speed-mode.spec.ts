@@ -65,10 +65,10 @@ test("speed mode trims ChatGPT conversation fetch and reveals cached older messa
   await page.addScriptTag({ path: resolve("dist/assets/content.js") });
   await page.waitForSelector("html[data-gptbd-ready='true']");
 
-  await expect(page.getByText("20 hidden · 10 shown")).toBeVisible();
+  await expect(page.getByText("20 hidden · 10 shown · initial 10")).toBeVisible();
   await page.getByRole("button", { name: "Load 2 more" }).click();
   await expect(page.locator(".gptbd-speed-turn")).toHaveCount(2);
-  await expect(page.getByText("18 hidden · 12 shown")).toBeVisible();
+  await expect(page.getByText("18 hidden · 12 shown · initial 10")).toBeVisible();
   await expect(page.locator(".gptbd-speed-body").first()).toHaveCSS("overflow", "hidden");
   await expect(page.getByRole("button", { name: "Show more" })).toBeVisible();
   await page.getByRole("button", { name: "Show more" }).click();
@@ -77,12 +77,12 @@ test("speed mode trims ChatGPT conversation fetch and reveals cached older messa
 
   await page.getByRole("button", { name: "Load 2 more" }).click();
   await expect(page.locator(".gptbd-speed-turn")).toHaveCount(4);
-  await expect(page.getByText("16 hidden · 14 shown")).toBeVisible();
+  await expect(page.getByText("16 hidden · 14 shown · initial 10")).toBeVisible();
   await expect.poll(() => apiCalls).toBe(1);
 
   await page.getByRole("button", { name: "View all" }).click();
   await expect(page.locator(".gptbd-speed-turn")).toHaveCount(20);
-  await expect(page.getByText("0 hidden · 30 shown")).toBeVisible();
+  await expect(page.getByText("0 hidden · 30 shown · initial 10")).toBeVisible();
   await expect(page.getByRole("button", { name: "All shown" })).toBeDisabled();
   await expect(page.locator("section[data-testid^='conversation-turn-']")).toHaveCount(10);
   await expect.poll(() => apiCalls).toBe(1);
@@ -95,7 +95,7 @@ function conversationHtml(): string {
     <meta charset="UTF-8" />
     <title>Mock ChatGPT Conversation</title>
     <script>
-      localStorage.setItem("gptbd.speedBridge", JSON.stringify({
+      localStorage.setItem("gptbd.speedBridge.v2", JSON.stringify({
         enabled: true,
         visibleMessages: 10,
         batchMessages: 2

@@ -13,7 +13,9 @@ test("popup switches between Korean and English UI", async ({ page }) => {
     const storage: Record<string, unknown> = {
       "gptbd.language": "ko",
       "gptbd.sidebarControls": true,
-      "gptbd.speedMode": false
+      "gptbd.speedMode": false,
+      "gptbd.speedVisibleMessages": 10,
+      "gptbd.speedBatchMessages": 2
     };
 
     window.__popupStorage = storage;
@@ -39,7 +41,13 @@ test("popup switches between Korean and English UI", async ({ page }) => {
         },
         async sendMessage(
           _tabId: number,
-          message: { type: string; language?: "en" | "ko"; enabled?: boolean }
+          message: {
+            type: string;
+            language?: "en" | "ko";
+            enabled?: boolean;
+            visibleMessages?: number;
+            batchMessages?: number;
+          }
         ) {
           if (message.type === "GPTBD_SET_LANGUAGE" && message.language) {
             storage["gptbd.language"] = message.language;
@@ -50,6 +58,10 @@ test("popup switches between Korean and English UI", async ({ page }) => {
           if (message.type === "GPTBD_SET_SPEED_MODE") {
             storage["gptbd.speedMode"] = Boolean(message.enabled);
           }
+          if (message.type === "GPTBD_SET_SPEED_SETTINGS") {
+            storage["gptbd.speedVisibleMessages"] = message.visibleMessages;
+            storage["gptbd.speedBatchMessages"] = message.batchMessages;
+          }
 
           return {
             available: true,
@@ -59,7 +71,9 @@ test("popup switches between Korean and English UI", async ({ page }) => {
             isDeleting: false,
             language: storage["gptbd.language"] ?? "ko",
             sidebarControls: storage["gptbd.sidebarControls"] ?? true,
-            speedMode: storage["gptbd.speedMode"] ?? false
+            speedMode: storage["gptbd.speedMode"] ?? false,
+            speedVisibleMessages: storage["gptbd.speedVisibleMessages"] ?? 10,
+            speedBatchMessages: storage["gptbd.speedBatchMessages"] ?? 2
           };
         }
       }
@@ -98,5 +112,14 @@ test("popup switches between Korean and English UI", async ({ page }) => {
     "aria-checked",
     "true"
   );
+  await expect(page.getByText("Initial 10 · Load 2 each")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Speed mode settings" })).toBeVisible();
+  await page.getByLabel("Initial messages").fill("12");
+  await page.getByLabel("Load more size").fill("3");
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByText("Initial 12 · Load 3 each")).toBeVisible();
+  await expect(page.getByText("Saved")).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.__popupStorage["gptbd.speedMode"])).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.__popupStorage["gptbd.speedVisibleMessages"])).toBe(12);
+  await expect.poll(() => page.evaluate(() => window.__popupStorage["gptbd.speedBatchMessages"])).toBe(3);
 });
