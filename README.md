@@ -14,8 +14,8 @@
 </p>
 
 <p align="center">
-  <a href="https://www.buymeacoffee.com/tikim">
-    <img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=tikim&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" alt="Buy me a coffee">
+  <a href="https://github.com/sponsors/xhdtn8070">
+    <img src="https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-ea4aaa?logo=githubsponsors&logoColor=white" alt="Sponsor on GitHub">
   </a>
   <br>
   <a href="https://github.com/xhdtn8070/chatgpt-conversation-cleaner">View source on GitHub</a>
@@ -77,7 +77,7 @@ Speed mode is separate from cleanup actions. It only hides or reveals ChatGPT's 
 
 ## Support
 
-Conversation Cleaner stays fully open source and free to use. If it saves you time, you can support the project with a coffee: [Buy me a coffee](https://www.buymeacoffee.com/tikim).
+Conversation Cleaner stays fully open source and free to use. If it saves you time, you can support ongoing development through [GitHub Sponsors](https://github.com/sponsors/xhdtn8070).
 
 ## Install Locally
 

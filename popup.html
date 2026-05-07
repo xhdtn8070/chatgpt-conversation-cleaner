@@ -25,22 +25,6 @@
       <section class="settings-group" aria-label="Cleanup settings">
         <section class="settings-row">
           <div>
-            <strong id="cleanupModeLabel">Cleanup mode</strong>
-            <span id="cleanupModeHint">Enable sidebar selection and cleanup actions.</span>
-          </div>
-          <button
-            id="cleanupModeToggle"
-            class="mini-switch"
-            type="button"
-            role="switch"
-            aria-checked="false"
-          >
-            <span aria-hidden="true"></span>
-          </button>
-        </section>
-
-        <section class="settings-row nested-row">
-          <div>
             <strong id="sidebarPanelLabel">Sidebar panel</strong>
             <span id="sidebarPanelHint">Show bulk controls inside ChatGPT's sidebar.</span>
           </div>
@@ -54,28 +38,46 @@
             <span aria-hidden="true"></span>
           </button>
         </section>
+
+        <section class="settings-row">
+          <div>
+            <strong id="cleanupModeLabel">Cleanup mode</strong>
+            <span id="cleanupModeHint">Enable sidebar selection and cleanup actions.</span>
+          </div>
+          <button
+            id="cleanupModeToggle"
+            class="mini-switch"
+            type="button"
+            role="switch"
+            aria-checked="false"
+          >
+            <span aria-hidden="true"></span>
+          </button>
+        </section>
       </section>
 
-      <section class="status-panel" aria-live="polite">
-        <div>
-          <span id="statusLabel" class="label">Status</span>
-          <strong id="statusText">Connecting...</strong>
-        </div>
-        <div>
-          <span id="visibleLabel" class="label">Visible</span>
-          <strong id="visibleCount">0</strong>
-        </div>
-        <div>
-          <span id="selectedLabel" class="label">Selected</span>
-          <strong id="selectedCount">0</strong>
-        </div>
-      </section>
+      <section id="cleanupDetails" class="cleanup-details" hidden>
+        <section class="status-panel" aria-live="polite">
+          <div>
+            <span id="statusLabel" class="label">Status</span>
+            <strong id="statusText">Connecting...</strong>
+          </div>
+          <div>
+            <span id="visibleLabel" class="label">Visible</span>
+            <strong id="visibleCount">0</strong>
+          </div>
+          <div>
+            <span id="selectedLabel" class="label">Selected</span>
+            <strong id="selectedCount">0</strong>
+          </div>
+        </section>
 
-      <section id="bulkActions" class="actions" aria-label="Bulk actions">
-        <button id="selectAll" type="button">Select all visible</button>
-        <button id="clear" type="button">Clear</button>
-        <button id="archive" type="button">Archive</button>
-        <button id="delete" class="danger" type="button">Delete</button>
+        <section id="bulkActions" class="actions" aria-label="Bulk actions">
+          <button id="selectAll" type="button">Select all visible</button>
+          <button id="clear" type="button">Clear</button>
+          <button id="archive" type="button">Archive</button>
+          <button id="delete" class="danger" type="button">Delete</button>
+        </section>
       </section>
 
       <section class="feature-section" aria-label="Speed settings">
@@ -117,18 +119,16 @@
 
       <section class="support-section" aria-labelledby="supportTitle">
         <div>
-          <strong id="supportTitle">Enjoying Cleaner?</strong>
-          <p id="supportText">All features stay free. If Cleaner helps, a coffee keeps it going.</p>
+          <strong id="supportTitle">Support Cleaner</strong>
+          <p id="supportText">Free and open source. Support development on GitHub Sponsors.</p>
         </div>
-        <a
-          id="supportLink"
+        <button
+          id="supportButton"
           class="support-link"
-          href="https://www.buymeacoffee.com/tikim"
-          target="_blank"
-          rel="noopener noreferrer"
+          type="button"
         >
-          Buy me a coffee
-        </a>
+          Sponsor on GitHub
+        </button>
         <a
           id="sourceLink"
           class="source-link"

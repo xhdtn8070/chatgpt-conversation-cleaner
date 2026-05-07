@@ -60,11 +60,11 @@ const EN_MESSAGES = {
   },
   popupSpeedSave: { message: "Save" },
   popupSpeedSaved: { message: "Saved" },
-  popupSupportTitle: { message: "Enjoying Cleaner?" },
+  popupSupportTitle: { message: "Support Cleaner" },
   popupSupportText: {
-    message: "All features stay free. If Cleaner helps, a coffee keeps it going."
+    message: "Free and open source. Support development on GitHub Sponsors."
   },
-  popupSupportLink: { message: "Buy me a coffee" },
+  popupSupportLink: { message: "Sponsor on GitHub" },
   popupSourceLink: { message: "View source on GitHub" },
   languageToggleAria: { message: "Switch language to $language", placeholders: ["language"] },
   languageEnglish: { message: "English" },
@@ -130,11 +130,11 @@ const KO_MESSAGES: Record<MessageKey, MessageDefinition> = {
   },
   popupSpeedSave: { message: "저장" },
   popupSpeedSaved: { message: "저장됨" },
-  popupSupportTitle: { message: "도움이 됐다면" },
+  popupSupportTitle: { message: "프로젝트 응원하기" },
   popupSupportText: {
-    message: "모든 기능은 계속 무료예요. 마음에 들었다면 커피 한 잔으로 응원해주세요."
+    message: "무료 오픈소스 유지를 GitHub Sponsors로 응원해주세요."
   },
-  popupSupportLink: { message: "커피 한 잔 보내기" },
+  popupSupportLink: { message: "GitHub Sponsors로 후원하기" },
   popupSourceLink: { message: "GitHub에서 소스 보기" },
   languageToggleAria: { message: "$language로 전환", placeholders: ["language"] },
   languageEnglish: { message: "영어" },

@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 declare global {
   interface Window {
     __popupStorage: Record<string, unknown>;
+    __createdTabs: string[];
   }
 }
 
@@ -21,6 +22,7 @@ test("popup switches between Korean and English UI", async ({ page }) => {
     };
 
     window.__popupStorage = storage;
+    window.__createdTabs = [];
     window.chrome = {
       i18n: {
         getUILanguage() {
@@ -40,6 +42,10 @@ test("popup switches between Korean and English UI", async ({ page }) => {
       tabs: {
         async query() {
           return [{ id: 1 }];
+        },
+        async create(createProperties: { url?: string }) {
+          window.__createdTabs.push(createProperties.url ?? "");
+          return { id: 2 };
         },
         async sendMessage(
           _tabId: number,
@@ -91,16 +97,17 @@ test("popup switches between Korean and English UI", async ({ page }) => {
     } as unknown as typeof chrome;
   });
 
+  await page.setViewportSize({ width: 340, height: 600 });
   await page.goto(pathToFileURL(resolve("dist/popup.html")).toString());
   await page.addScriptTag({ path: resolve("dist/assets/popup.js") });
 
   await expect(page.getByRole("heading", { name: "정리" })).toBeVisible();
   await expect(page.getByRole("button", { name: "영어로 전환" })).toHaveText("EN");
-  await expect(page.getByText("모든 기능은 계속 무료예요.")).toBeVisible();
-  await expect(page.getByRole("link", { name: "커피 한 잔 보내기" })).toHaveAttribute(
-    "href",
-    "https://www.buymeacoffee.com/tikim"
-  );
+  await expect(page.getByText("무료 오픈소스 유지를 GitHub Sponsors로 응원해주세요.")).toBeVisible();
+  await page.getByRole("button", { name: "GitHub Sponsors로 후원하기" }).click();
+  await expect.poll(() => page.evaluate(() => window.__createdTabs)).toEqual([
+    "https://github.com/sponsors/xhdtn8070"
+  ]);
   await expect(page.getByRole("link", { name: "GitHub에서 소스 보기" })).toHaveAttribute(
     "href",
     "https://github.com/xhdtn8070/chatgpt-conversation-cleaner"
@@ -116,20 +123,33 @@ test("popup switches between Korean and English UI", async ({ page }) => {
     "aria-checked",
     "true"
   );
+  expect(
+    await page.evaluate(() =>
+      Array.from(document.querySelectorAll(".settings-group button[role='switch']")).map(
+        (button) => button.id
+      )
+    )
+  ).toEqual(["sidebarPanelToggle", "cleanupModeToggle"]);
+  await expect(page.locator("#cleanupDetails")).toBeHidden();
   await expect(page.getByRole("switch", { name: "긴 대화 속도 모드" })).toHaveAttribute(
     "aria-checked",
     "false"
   );
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const support = document.querySelector(".support-section")?.getBoundingClientRect();
+        return support ? support.bottom <= window.innerHeight : false;
+      })
+    )
+    .toBe(true);
 
   await page.getByRole("button", { name: "영어로 전환" }).click();
 
   await expect(page.getByRole("heading", { name: "Cleaner" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Switch language to Korean" })).toHaveText("KO");
-  await expect(page.getByText("All features stay free.")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Buy me a coffee" })).toHaveAttribute(
-    "href",
-    "https://www.buymeacoffee.com/tikim"
-  );
+  await expect(page.getByText("Free and open source. Support development on GitHub Sponsors.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sponsor on GitHub" })).toBeVisible();
   await expect(page.getByRole("link", { name: "View source on GitHub" })).toHaveAttribute(
     "href",
     "https://github.com/xhdtn8070/chatgpt-conversation-cleaner"
@@ -141,6 +161,8 @@ test("popup switches between Korean and English UI", async ({ page }) => {
     "aria-checked",
     "true"
   );
+  await expect(page.locator("#cleanupDetails")).toBeVisible();
+  await expect(page.getByText("Bulk mode on")).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.__popupStorage["gptbd.bulkMode"])).toBe(true);
 
   await page.getByRole("switch", { name: "Show sidebar bulk controls" }).click();

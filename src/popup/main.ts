@@ -25,6 +25,7 @@ const appHeading = getElement<HTMLElement>("appHeading");
 const cleanupModeLabel = getElement<HTMLElement>("cleanupModeLabel");
 const cleanupModeHint = getElement<HTMLElement>("cleanupModeHint");
 const cleanupModeToggle = getElement<HTMLButtonElement>("cleanupModeToggle");
+const cleanupDetails = getElement<HTMLElement>("cleanupDetails");
 const statusLabel = getElement<HTMLElement>("statusLabel");
 const statusText = getElement<HTMLElement>("statusText");
 const visibleLabel = getElement<HTMLElement>("visibleLabel");
@@ -53,9 +54,11 @@ const speedSettingsSave = getElement<HTMLButtonElement>("speedSettingsSave");
 const speedSettingsSaved = getElement<HTMLElement>("speedSettingsSaved");
 const supportTitle = getElement<HTMLElement>("supportTitle");
 const supportText = getElement<HTMLElement>("supportText");
-const supportLink = getElement<HTMLAnchorElement>("supportLink");
+const supportButton = getElement<HTMLButtonElement>("supportButton");
 const sourceLink = getElement<HTMLAnchorElement>("sourceLink");
 const hint = getElement<HTMLElement>("hint");
+
+const SPONSOR_URL = "https://github.com/sponsors/xhdtn8070";
 
 let currentState: ExtensionState | null = null;
 let currentLanguage: LanguageCode = getDefaultLanguage();
@@ -122,6 +125,10 @@ deleteButton.addEventListener("click", () => {
   void sendAndRender({ type: MESSAGE_TYPES.deleteSelected });
 });
 
+supportButton.addEventListener("click", () => {
+  void chrome.tabs.create({ url: SPONSOR_URL });
+});
+
 void init();
 
 async function init(): Promise<void> {
@@ -186,6 +193,7 @@ function renderState(state: ExtensionState): void {
   extensionEnabled.checked = state.extensionEnabled;
   extensionEnabled.disabled = state.isDeleting;
   cleanupModeToggle.setAttribute("aria-checked", String(state.bulkMode));
+  cleanupDetails.hidden = !state.bulkMode;
   statusText.textContent = state.isDeleting
     ? t("popupStatusWorking")
     : !state.extensionEnabled
@@ -230,6 +238,7 @@ function renderUnavailable(): void {
   extensionEnabled.checked = false;
   extensionEnabled.disabled = true;
   cleanupModeToggle.setAttribute("aria-checked", String(FIRST_RUN_DEFAULTS.bulkMode));
+  cleanupDetails.hidden = true;
   statusText.textContent = t("popupStatusOpenChatGpt");
   visibleCount.textContent = "0";
   selectedCount.textContent = "0";
@@ -330,8 +339,8 @@ function applyStaticCopy(): void {
   speedSettingsSave.textContent = t("popupSpeedSave");
   supportTitle.textContent = t("popupSupportTitle");
   supportText.textContent = t("popupSupportText");
-  supportLink.textContent = t("popupSupportLink");
-  supportLink.setAttribute("aria-label", t("popupSupportLink"));
+  supportButton.textContent = t("popupSupportLink");
+  supportButton.setAttribute("aria-label", t("popupSupportLink"));
   sourceLink.textContent = t("popupSourceLink");
   sourceLink.setAttribute("aria-label", t("popupSourceLink"));
   hint.textContent = t("popupHintInitial");
