@@ -88,6 +88,10 @@ test("content script renders stable checkbox overlay and isolates row clicks", a
   await expect.poll(() => page.evaluate(() => window.__navigated)).toBe(false);
   await expect(page.getByRole("button", { name: "Deselect all" })).toHaveText("None");
 
+  await page.getByRole("checkbox", { name: "Pinned design review is pinned. Unpin before selecting." }).click();
+  await expect(page.locator("#row-pinned")).not.toHaveAttribute("data-gptbd-row-selected", "true");
+  await expect(page.getByText('"Pinned design review" is pinned. Unpin it in ChatGPT before selecting.')).toBeVisible();
+
   await page.getByRole("button", { name: "Deselect all" }).click();
   await expect(page.getByText("0 selected", { exact: true })).toBeVisible();
 

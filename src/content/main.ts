@@ -60,7 +60,15 @@ const ACTION_CONFIG: Record<BulkConversationAction, BulkActionConfig> = {
     requiresMenuConfirm: true
   }
 };
-const MENU_LABELS = ["options", "more", "menu", "conversation options", "옵션", "더 보기"];
+const MENU_LABELS = [
+  "options",
+  "more",
+  "menu",
+  "conversation options",
+  "대화 옵션",
+  "옵션",
+  "더 보기"
+];
 const HISTORY_HEADER_CLASS = "text-token-text-tertiary";
 
 declare global {
@@ -79,6 +87,7 @@ class BulkDeleteController {
   private checkboxLayer: HTMLElement;
   private actionBar: HTMLElement;
   private dialogHost: HTMLElement;
+  private busyShield: HTMLElement;
   private notice: HTMLElement;
   private toolbarSpacer: HTMLElement;
   private observer: MutationObserver;
@@ -136,13 +145,22 @@ class BulkDeleteController {
     this.checkboxLayer = document.createElement("div");
     this.actionBar = document.createElement("div");
     this.dialogHost = document.createElement("div");
+    this.busyShield = document.createElement("div");
+    this.busyShield.className = "busy-shield";
+    this.busyShield.hidden = true;
     this.toolbarSpacer = document.createElement("div");
     this.toolbarSpacer.dataset.gptbdToolbarSpacer = "true";
     this.notice = document.createElement("div");
     this.notice.className = "notice";
     this.notice.hidden = true;
 
-    this.overlayRoot.append(this.checkboxLayer, this.actionBar, this.dialogHost, this.notice);
+    this.overlayRoot.append(
+      this.checkboxLayer,
+      this.actionBar,
+      this.dialogHost,
+      this.busyShield,
+      this.notice
+    );
     this.shadow.append(this.overlayRoot);
 
     this.observer = new MutationObserver((mutations) => {
@@ -188,7 +206,7 @@ class BulkDeleteController {
   }
 
   selectAllVisible(): ExtensionState {
-    this.selectedIds = selectAll(this.rows.keys());
+    this.selectedIds = selectAll(this.selectableRows().map((row) => row.id));
     this.render();
     return this.getState();
   }
@@ -210,6 +228,15 @@ class BulkDeleteController {
 
   requestActionSelected(action: BulkConversationAction): ExtensionState {
     if (this.selectedIds.size > 0 && !this.isDeleting) {
+      const pinnedRow = Array.from(this.selectedIds)
+        .map((id) => this.rows.get(id))
+        .find((row) => row?.isPinned);
+
+      if (pinnedRow) {
+        this.showPinnedNotice(pinnedRow);
+        return this.getState();
+      }
+
       this.showActionDialog(action);
     }
 
@@ -336,6 +363,12 @@ class BulkDeleteController {
 
       event.preventDefault();
       event.stopPropagation();
+
+      if (row.isPinned) {
+        this.showPinnedNotice(row);
+        return;
+      }
+
       this.toggleRowSelection(row.id, true);
     });
 
@@ -351,9 +384,14 @@ class BulkDeleteController {
     const selected = this.selectedIds.has(row.id);
     button.type = "button";
     button.className = "checkbox-target";
+    button.classList.toggle("is-pinned", row.isPinned);
     button.setAttribute("role", "checkbox");
     button.setAttribute("aria-checked", String(selected));
-    button.setAttribute("aria-label", `Select ${row.title}`);
+    button.setAttribute(
+      "aria-label",
+      row.isPinned ? `${row.title} is pinned. Unpin before selecting.` : `Select ${row.title}`
+    );
+    button.toggleAttribute("data-pinned", row.isPinned);
     button.style.left = `${layout.left}px`;
     button.style.top = `${layout.top}px`;
     button.style.width = `${layout.size}px`;
@@ -367,6 +405,12 @@ class BulkDeleteController {
     button.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
+
+      if (row.isPinned) {
+        this.showPinnedNotice(row);
+        return;
+      }
+
       this.toggleRowSelection(row.id);
     });
 
@@ -417,7 +461,10 @@ class BulkDeleteController {
       return;
     }
 
-    const allVisibleSelected = this.rows.size > 0 && this.selectedIds.size === this.rows.size;
+    const selectableRows = this.selectableRows();
+    const allVisibleSelected =
+      selectableRows.length > 0 &&
+      selectableRows.every((row) => this.selectedIds.has(row.id));
     const actionsRow = document.createElement("div");
     actionsRow.className = "toolbar-actions";
 
@@ -430,7 +477,7 @@ class BulkDeleteController {
       this.selectAllVisible();
     });
     selectAllButton.setAttribute("aria-label", allVisibleSelected ? "Deselect all" : "Select all");
-    selectAllButton.disabled = this.rows.size === 0 || this.isDeleting;
+    selectAllButton.disabled = selectableRows.length === 0 || this.isDeleting;
 
     const clearButton = createActionButton("Clear", () => {
       this.clearSelection();
@@ -536,11 +583,24 @@ class BulkDeleteController {
 
     this.isDeleting = true;
     this.lastDeleteSummary = undefined;
+    this.showBusyShield(`${config.progressVerb} selected conversations...`);
     this.render();
 
     const results: DeleteItemResult[] = [];
 
     for (const row of selectedRows) {
+      if (row.isPinned) {
+        results.push({
+          id: row.id,
+          title: row.title,
+          ok: false,
+          error: "Pinned conversations must be unpinned first."
+        });
+        this.showPinnedNotice(row);
+        continue;
+      }
+
+      this.showBusyShield(`${config.progressVerb} "${truncate(row.title, 42)}"...`);
       this.showNotice(`${config.progressVerb} "${truncate(row.title, 42)}"...`);
 
       try {
@@ -569,6 +629,7 @@ class BulkDeleteController {
       items: results
     };
     this.isDeleting = false;
+    this.hideBusyShield();
     this.showNotice(
       failed > 0
         ? `${deleted} ${config.doneVerb}, ${failed} failed. Failed items remain selected.`
@@ -733,6 +794,13 @@ class BulkDeleteController {
   }
 
   private toggleRowSelection(id: string, deferRender = false): void {
+    const row = this.rows.get(id);
+
+    if (row?.isPinned && !this.selectedIds.has(id)) {
+      this.showPinnedNotice(row);
+      return;
+    }
+
     this.selectedIds = toggleSelection(this.selectedIds, id);
     this.lastDeleteSummary = undefined;
 
@@ -751,6 +819,24 @@ class BulkDeleteController {
 
     return nodes.length > 0 && nodes.every((node) => node === this.toolbarSpacer);
   }
+
+  private selectableRows(): ConversationRow[] {
+    return Array.from(this.rows.values()).filter((row) => !row.isPinned);
+  }
+
+  private showPinnedNotice(row: ConversationRow): void {
+    this.showNotice(`"${truncate(row.title, 42)}" is pinned. Unpin it in ChatGPT before selecting.`);
+  }
+
+  private showBusyShield(message: string): void {
+    this.busyShield.textContent = message;
+    this.busyShield.hidden = false;
+  }
+
+  private hideBusyShield(): void {
+    this.busyShield.hidden = true;
+    this.busyShield.textContent = "";
+  }
 }
 
 async function applyConversationMenuAction(
@@ -761,10 +847,7 @@ async function applyConversationMenuAction(
   revealRow(row.row);
   await delay(180);
 
-  const menuButton = await waitFor(() => findMenuButton(row.row), 2200);
-  clickElement(menuButton);
-
-  const actionItem = await waitFor(() => findVisibleControlByText(config.labels), 2600);
+  const actionItem = await openConversationMenuForAction(row, config.labels);
   clickElement(actionItem);
 
   const confirmButton = config.requiresMenuConfirm
@@ -776,6 +859,42 @@ async function applyConversationMenuAction(
   }
 
   await waitFor(() => !findAnchorByConversationId(row.id), 7000);
+}
+
+async function openConversationMenuForAction(
+  row: ConversationRow,
+  actionLabels: string[]
+): Promise<HTMLElement> {
+  const menuButton = await waitFor(() => findMenuButton(row.row), 2200);
+  const cleanupExpose = forceExposeMenuButton(row.row, menuButton);
+
+  try {
+    for (const activate of [clickElement, keyboardActivateElement]) {
+      const cleanupPrevent = preventAnchorNavigation(row.anchor);
+      let actionItem: HTMLElement | null = null;
+
+      try {
+        activate(menuButton);
+        actionItem = await waitFor(
+          () => findVisibleControlByText(actionLabels),
+          1000,
+          60
+        ).catch(() => null);
+      } finally {
+        cleanupPrevent();
+      }
+
+      if (actionItem) {
+        return actionItem;
+      }
+
+      await delay(120);
+    }
+  } finally {
+    cleanupExpose();
+  }
+
+  throw new Error(`Could not open menu for "${row.title}".`);
 }
 
 function findMenuButton(row: HTMLElement): HTMLElement | null {
@@ -802,6 +921,78 @@ function findMenuButton(row: HTMLElement): HTMLElement | null {
     .sort((a, b) => b.rect.left - a.rect.left);
 
   return overlapping[0]?.candidate ?? candidates.at(-1) ?? null;
+}
+
+function forceExposeMenuButton(row: HTMLElement, menuButton: HTMLElement): () => void {
+  const previous = {
+    rowForce: row.getAttribute("data-gptbd-force-menu"),
+    opacity: menuButton.style.getPropertyValue("opacity"),
+    opacityPriority: menuButton.style.getPropertyPriority("opacity"),
+    pointerEvents: menuButton.style.getPropertyValue("pointer-events"),
+    pointerEventsPriority: menuButton.style.getPropertyPriority("pointer-events"),
+    visibility: menuButton.style.getPropertyValue("visibility"),
+    visibilityPriority: menuButton.style.getPropertyPriority("visibility")
+  };
+
+  row.setAttribute("data-gptbd-force-menu", "true");
+  menuButton.style.setProperty("opacity", "1", "important");
+  menuButton.style.setProperty("pointer-events", "auto", "important");
+  menuButton.style.setProperty("visibility", "visible", "important");
+  revealRow(row);
+
+  return () => {
+    if (previous.rowForce === null) {
+      row.removeAttribute("data-gptbd-force-menu");
+    } else {
+      row.setAttribute("data-gptbd-force-menu", previous.rowForce);
+    }
+
+    restoreStyleProperty(menuButton, "opacity", previous.opacity, previous.opacityPriority);
+    restoreStyleProperty(
+      menuButton,
+      "pointer-events",
+      previous.pointerEvents,
+      previous.pointerEventsPriority
+    );
+    restoreStyleProperty(
+      menuButton,
+      "visibility",
+      previous.visibility,
+      previous.visibilityPriority
+    );
+  };
+}
+
+function restoreStyleProperty(
+  element: HTMLElement,
+  property: string,
+  value: string,
+  priority: string
+): void {
+  if (value) {
+    element.style.setProperty(property, value, priority);
+    return;
+  }
+
+  element.style.removeProperty(property);
+}
+
+function preventAnchorNavigation(anchor: HTMLAnchorElement): () => void {
+  const prevent = (event: Event) => {
+    const target = event.target;
+
+    if (target instanceof Node && anchor.contains(target)) {
+      event.preventDefault();
+    }
+  };
+
+  anchor.addEventListener("click", prevent, true);
+  anchor.addEventListener("auxclick", prevent, true);
+
+  return () => {
+    anchor.removeEventListener("click", prevent, true);
+    anchor.removeEventListener("auxclick", prevent, true);
+  };
 }
 
 function findVisibleControlByText(keywords: string[]): HTMLElement | null {
@@ -896,6 +1087,18 @@ function clickElement(element: HTMLElement): void {
   element.dispatchEvent(new PointerEvent("pointerup", { ...pointerInit, buttons: 0 }));
   element.dispatchEvent(new MouseEvent("mouseup", { ...mouseInit, buttons: 0 }));
   element.click();
+}
+
+function keyboardActivateElement(element: HTMLElement): void {
+  element.focus({ preventScroll: true });
+  const keyboardInit: KeyboardEventInit = {
+    bubbles: true,
+    cancelable: true,
+    key: "Enter",
+    code: "Enter"
+  };
+  element.dispatchEvent(new KeyboardEvent("keydown", keyboardInit));
+  element.dispatchEvent(new KeyboardEvent("keyup", keyboardInit));
 }
 
 function isVisibleElement(element: HTMLElement): boolean {

@@ -9,6 +9,7 @@ describe("sidebar conversation parser", () => {
           <li id="row-alpha"><a id="alpha" href="/c/alpha-123"> Alpha   Project </a></li>
           <li id="row-beta"><a id="beta" href="/c/beta-456" aria-label="Beta plan"></a></li>
           <li id="row-duplicate"><a id="alpha-duplicate" href="/c/alpha-123">Duplicate</a></li>
+          <li id="row-pinned"><a id="pinned" href="/c/pinned-789">Pinned plan</a><button aria-label="Unpin conversation"></button></li>
         </ol>
       </nav>
       <main>
@@ -24,6 +25,8 @@ describe("sidebar conversation parser", () => {
     mockRect(document.getElementById("beta")!, rect(16, 132, 280, 36));
     mockRect(document.getElementById("row-duplicate")!, rect(8, 176, 300, 44));
     mockRect(document.getElementById("alpha-duplicate")!, rect(16, 180, 280, 36));
+    mockRect(document.getElementById("row-pinned")!, rect(8, 224, 300, 44));
+    mockRect(document.getElementById("pinned")!, rect(16, 228, 280, 36));
     mockRect(document.getElementById("outside")!, rect(620, 80, 240, 36));
   });
 
@@ -44,9 +47,10 @@ describe("sidebar conversation parser", () => {
   it("collects visible unique sidebar conversation rows", () => {
     const rows = collectConversationRows();
 
-    expect(rows).toHaveLength(2);
-    expect(rows.map((row) => row.id)).toEqual(["alpha-123", "beta-456"]);
+    expect(rows).toHaveLength(3);
+    expect(rows.map((row) => row.id)).toEqual(["alpha-123", "beta-456", "pinned-789"]);
     expect(rows[0].title).toBe("Alpha Project");
     expect(rows[1].title).toBe("Beta plan");
+    expect(rows[2].isPinned).toBe(true);
   });
 });

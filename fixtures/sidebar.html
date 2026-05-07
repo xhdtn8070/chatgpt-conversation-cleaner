@@ -53,6 +53,8 @@
       a {
         display: flex;
         align-items: center;
+        justify-content: space-between;
+        gap: 8px;
         height: 44px;
         padding: 0 12px;
         border-radius: 8px;
@@ -65,7 +67,11 @@
       }
 
       button.more {
-        float: right;
+        width: 28px;
+        height: 28px;
+      }
+
+      button.pin {
         width: 28px;
         height: 28px;
       }
@@ -84,16 +90,29 @@
       </div>
       <ol>
         <li id="row-alpha">
-          <a href="/c/alpha">Alpha planning thread</a>
-          <button class="more" aria-label="Open conversation options">...</button>
+          <a href="/c/alpha" aria-label="Alpha planning thread">
+            <span>Alpha planning thread</span>
+            <button class="more" aria-label="Open conversation options">...</button>
+          </a>
         </li>
         <li id="row-beta">
-          <a href="/c/beta">Beta release notes with a very long conversation title</a>
-          <button class="more" aria-label="Open conversation options">...</button>
+          <a href="/c/beta" aria-label="Beta release notes with a very long conversation title">
+            <span>Beta release notes with a very long conversation title</span>
+            <button class="more" aria-label="Open conversation options">...</button>
+          </a>
         </li>
         <li id="row-gamma">
-          <a href="/c/gamma">Gamma QA checklist</a>
-          <button class="more" aria-label="Open conversation options">...</button>
+          <a href="/c/gamma" aria-label="Gamma QA checklist">
+            <span>Gamma QA checklist</span>
+            <button class="more" aria-label="Open conversation options">...</button>
+          </a>
+        </li>
+        <li id="row-pinned">
+          <a href="/c/pinned" aria-label="Pinned design review">
+            <span>Pinned design review</span>
+            <button class="pin" aria-label="Unpin conversation">Pin</button>
+            <button class="more" aria-label="Open conversation options">...</button>
+          </a>
         </li>
       </ol>
     </nav>
@@ -107,8 +126,9 @@
 
       for (const anchor of document.querySelectorAll("a")) {
         anchor.addEventListener("click", (event) => {
+          const wasPrevented = event.defaultPrevented;
           event.preventDefault();
-          window.__navigated = true;
+          window.__navigated = !wasPrevented;
         });
       }
 
@@ -125,7 +145,6 @@
       for (const button of document.querySelectorAll("button.more")) {
         button.addEventListener("click", (event) => {
           event.preventDefault();
-          event.stopPropagation();
           closeMenu();
 
           const rect = button.getBoundingClientRect();

@@ -6,6 +6,7 @@ export type ConversationRow = {
   row: HTMLElement;
   rect: DOMRect;
   sidebarRect: DOMRect;
+  isPinned: boolean;
 };
 
 const CONVERSATION_PATH = /\/c\/([^/?#]+)/;
@@ -86,7 +87,8 @@ export function collectConversationRows(doc: Document = document): ConversationR
       anchor,
       row,
       rect,
-      sidebarRect
+      sidebarRect,
+      isPinned: isPinnedConversation(row, sidebar)
     });
   }
 
@@ -139,6 +141,47 @@ function resolveTitle(anchor: HTMLAnchorElement): string {
     "";
 
   return normalizeTitle(label);
+}
+
+function isPinnedConversation(row: HTMLElement, sidebar: HTMLElement | null): boolean {
+  const attrValues = [row, ...Array.from(row.querySelectorAll<HTMLElement>("*"))]
+    .flatMap((element) => [
+      element.getAttribute("aria-label"),
+      element.getAttribute("title"),
+      element.getAttribute("data-testid"),
+      element.getAttribute("data-state"),
+      element.getAttribute("class")
+    ])
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (
+    /\b(pinned|unpin)\b/.test(attrValues) ||
+    /고정된 대화|고정됨|고정 해제|핀 해제/.test(attrValues)
+  ) {
+    return true;
+  }
+
+  if (!sidebar) {
+    return false;
+  }
+
+  const rowRect = row.getBoundingClientRect();
+  const header = Array.from(sidebar.querySelectorAll<HTMLElement>("div,p,span,h2,h3"))
+    .filter((element) => {
+      if (element.contains(row) || element.querySelector('a[href*="/c/"]')) {
+        return false;
+      }
+
+      const text = normalizeTitle(element.textContent ?? "");
+      const rect = element.getBoundingClientRect();
+      return text.length > 0 && text.length <= 32 && rect.top < rowRect.top;
+    })
+    .sort((a, b) => b.getBoundingClientRect().top - a.getBoundingClientRect().top)[0];
+
+  const headerText = normalizeTitle(header?.textContent ?? "").toLowerCase();
+  return /\bpinned\b/.test(headerText) || /고정/.test(headerText);
 }
 
 function defaultSidebarRect(): DOMRect {

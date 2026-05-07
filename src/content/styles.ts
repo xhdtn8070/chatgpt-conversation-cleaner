@@ -75,6 +75,15 @@ export const SHADOW_CSS = `
   transform: rotate(45deg);
 }
 
+.checkbox-target.is-pinned {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.checkbox-target.is-pinned .checkbox-visual {
+  border-style: dashed;
+}
+
 .action-bar {
   position: fixed;
   display: grid;
@@ -218,6 +227,28 @@ export const SHADOW_CSS = `
   font: 500 12px/1.35 ui-sans-serif, system-ui, sans-serif;
   pointer-events: none;
 }
+
+.busy-shield {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: grid;
+  place-items: end center;
+  padding: 0 16px 24px;
+  box-sizing: border-box;
+  background: color-mix(in srgb, CanvasText 14%, transparent);
+  color: CanvasText;
+  pointer-events: auto;
+  font: 600 13px/1.35 ui-sans-serif, system-ui, sans-serif;
+}
+
+.busy-shield:not([hidden]) {
+  display: grid;
+}
+
+.busy-shield[hidden] {
+  display: none;
+}
 `;
 
 export const DOCUMENT_CSS = `
@@ -232,6 +263,14 @@ html.gptbd-bulk-active [data-gptbd-row-selected="true"] {
 
 html.gptbd-bulk-active [data-gptbd-row-selected="true"] a {
   background: transparent !important;
+}
+
+html.gptbd-bulk-active [data-gptbd-force-menu="true"] button[aria-label*="대화 옵션"],
+html.gptbd-bulk-active [data-gptbd-force-menu="true"] button[aria-label*="conversation options" i],
+html.gptbd-bulk-active [data-gptbd-force-menu="true"] button[aria-label*="options" i] {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  visibility: visible !important;
 }
 
 [data-gptbd-toolbar-spacer="true"] {
