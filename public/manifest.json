@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "ChatGPT Bulk Delete",
   "version": "0.1.0",
-  "description": "Adds a stable bulk-selection overlay to the ChatGPT sidebar so selected conversations can be deleted through the existing web UI.",
+  "description": "Adds a stable bulk-selection overlay to the ChatGPT sidebar so selected conversations can be archived or deleted.",
   "action": {
     "default_title": "ChatGPT Bulk Delete",
     "default_popup": "popup.html"

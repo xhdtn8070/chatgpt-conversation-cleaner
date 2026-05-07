@@ -137,6 +137,7 @@
     <script>
       window.__navigated = false;
       window.__voiceClicked = false;
+      window.__menuOpened = false;
       let activeMenu = null;
 
       for (const anchor of document.querySelectorAll("a")) {
@@ -164,6 +165,7 @@
       for (const button of document.querySelectorAll("button.more")) {
         button.addEventListener("click", (event) => {
           event.preventDefault();
+          window.__menuOpened = true;
           closeMenu();
 
           const rect = button.getBoundingClientRect();

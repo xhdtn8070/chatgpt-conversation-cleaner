@@ -24,6 +24,7 @@ const MESSAGE_TYPES = {
 } as const;
 type BulkConversationAction = "archive" | "delete";
 type BulkActionConfig = {
+  apiPayload: Record<string, boolean>;
   labels: string[];
   confirmLabels: string[];
   dialogTitle: string;
@@ -36,6 +37,7 @@ type BulkActionConfig = {
 };
 const ACTION_CONFIG: Record<BulkConversationAction, BulkActionConfig> = {
   archive: {
+    apiPayload: { is_archived: true },
     labels: ["archive", "archived", "보관", "아카이브"],
     confirmLabels: ["archive", "confirm", "보관", "확인"],
     dialogTitle: "Confirm archive",
@@ -48,6 +50,7 @@ const ACTION_CONFIG: Record<BulkConversationAction, BulkActionConfig> = {
     requiresMenuConfirm: false
   },
   delete: {
+    apiPayload: { is_visible: false },
     labels: ["delete", "삭제"],
     confirmLabels: ["delete", "confirm", "삭제", "확인"],
     dialogTitle: "Confirm delete",
@@ -70,6 +73,9 @@ const MENU_LABELS = [
   "더 보기"
 ];
 const HISTORY_HEADER_CLASS = "text-token-text-tertiary";
+const AUTH_SESSION_ENDPOINT = "/api/auth/session";
+const CONVERSATION_API_PREFIX = "/backend-api/conversation/";
+let cachedAccessToken: { token: string; expiresAt: number } | null = null;
 
 declare global {
   interface Window {
@@ -604,7 +610,7 @@ class BulkDeleteController {
       this.showNotice(`${config.progressVerb} "${truncate(row.title, 42)}"...`);
 
       try {
-        await applyConversationMenuAction(row, config);
+        await applyConversationAction(row, config);
         results.push({ id: row.id, title: row.title, ok: true });
         this.selectedIds = removeSelected(this.selectedIds, [row.id]);
       } catch (error) {
@@ -840,7 +846,57 @@ class BulkDeleteController {
   }
 }
 
-async function applyConversationMenuAction(
+async function applyConversationAction(
+  row: ConversationRow,
+  config: BulkActionConfig
+): Promise<void> {
+  if (await applyConversationApiAction(row, config)) {
+    return;
+  }
+
+  await applyConversationUiAction(row, config);
+}
+
+async function applyConversationApiAction(
+  row: ConversationRow,
+  config: BulkActionConfig
+): Promise<boolean> {
+  const token = await getChatGptAccessToken();
+
+  if (!token) {
+    return false;
+  }
+
+  try {
+    const response = await fetch(`${CONVERSATION_API_PREFIX}${encodeURIComponent(row.id)}`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(config.apiPayload)
+    });
+
+    if (!response.ok) {
+      return false;
+    }
+
+    const result = await parseJsonSafely(response);
+
+    if (result && typeof result === "object" && "success" in result && result.success === false) {
+      return false;
+    }
+
+    removeVisibleConversationRow(row);
+    await waitFor(() => !findAnchorByConversationId(row.id), 1400, 80).catch(() => null);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function applyConversationUiAction(
   row: ConversationRow,
   config: BulkActionConfig
 ): Promise<void> {
@@ -1171,6 +1227,113 @@ function isRedLikeColor(value: string): boolean {
 function findAnchorByConversationId(id: string): HTMLAnchorElement | null {
   const escaped = cssEscape(id);
   return document.querySelector<HTMLAnchorElement>(`a[href*="/c/${escaped}"]`);
+}
+
+async function getChatGptAccessToken(): Promise<string | null> {
+  const now = Date.now();
+
+  if (cachedAccessToken && cachedAccessToken.expiresAt > now) {
+    return cachedAccessToken.token;
+  }
+
+  const bootstrapToken = readAccessTokenFromBootstrap();
+
+  if (bootstrapToken) {
+    cachedAccessToken = { token: bootstrapToken, expiresAt: now + 60_000 };
+    return bootstrapToken;
+  }
+
+  try {
+    const response = await fetch(AUTH_SESSION_ENDPOINT, {
+      credentials: "include",
+      headers: { Accept: "application/json" }
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const session = await parseJsonSafely(response);
+    const token = findAccessTokenInJson(session);
+
+    if (!token) {
+      return null;
+    }
+
+    cachedAccessToken = { token, expiresAt: now + 60_000 };
+    return token;
+  } catch {
+    return null;
+  }
+}
+
+function readAccessTokenFromBootstrap(): string | null {
+  const candidates = [
+    document.getElementById("client-bootstrap")?.textContent,
+    document.getElementById("__NEXT_DATA__")?.textContent
+  ].filter((value): value is string => Boolean(value));
+
+  for (const value of candidates) {
+    try {
+      const parsed = JSON.parse(value);
+      const token = findAccessTokenInJson(parsed);
+
+      if (token) {
+        return token;
+      }
+    } catch {
+      // Ignore non-JSON bootstrap content.
+    }
+  }
+
+  return null;
+}
+
+function findAccessTokenInJson(value: unknown, depth = 0): string | null {
+  if (!value || depth > 8) {
+    return null;
+  }
+
+  if (typeof value !== "object") {
+    return null;
+  }
+
+  for (const [key, child] of Object.entries(value)) {
+    if (key === "accessToken" && typeof child === "string" && child.length > 20) {
+      return child;
+    }
+
+    const nested = findAccessTokenInJson(child, depth + 1);
+
+    if (nested) {
+      return nested;
+    }
+  }
+
+  return null;
+}
+
+async function parseJsonSafely(response: Response): Promise<unknown> {
+  const text = await response.text();
+
+  if (!text) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+function removeVisibleConversationRow(row: ConversationRow): void {
+  if (row.row.isConnected) {
+    row.row.remove();
+    return;
+  }
+
+  row.anchor.remove();
 }
 
 function revealRow(row: HTMLElement): void {

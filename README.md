@@ -1,6 +1,6 @@
 # ChatGPT Bulk Delete
 
-A Manifest V3 Chrome extension that adds a stable bulk-selection overlay to the ChatGPT sidebar. The first version focuses on reliable selection and deletion through ChatGPT's existing web UI rather than private API calls.
+A Manifest V3 Chrome extension that adds a stable bulk-selection overlay to the ChatGPT sidebar. Delete and archive actions try ChatGPT's same-origin web API first, then fall back to scoped UI automation only inside active ChatGPT menus and dialogs.
 
 ![UX mockup](docs/ux-mockup.png)
 
@@ -10,6 +10,8 @@ A Manifest V3 Chrome extension that adds a stable bulk-selection overlay to the 
 - Keep checkbox clicks separate from conversation row navigation.
 - In Bulk mode, clicking a conversation row toggles selection instead of navigating.
 - Require an explicit confirmation before destructive actions.
+- Prefer same-origin ChatGPT web API actions over UI clicking.
+- Keep UI fallback constrained to active menus and dialogs.
 - Store only local extension settings with `chrome.storage.local`.
 
 ## Development
@@ -29,8 +31,8 @@ Load `dist/` as an unpacked extension from `chrome://extensions`.
 npm run test:browser
 ```
 
-The browser test uses a local mock sidebar fixture and injects the built content script to verify overlay rendering, selection, and click isolation.
+The browser test uses a local mock sidebar fixture and injects the built content script to verify overlay rendering, selection, API-first actions, scoped UI fallback, and click isolation.
 
 ## Privacy
 
-This extension does not send conversation titles, IDs, or settings to any external server. See `PRIVACY.md`.
+This extension only sends selected conversation IDs to ChatGPT's own same-origin web API when applying archive/delete actions. It does not send data to any third-party server. See `PRIVACY.md`.

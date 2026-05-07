@@ -6,6 +6,8 @@ declare global {
   interface Window {
     __navigated: boolean;
     __voiceClicked: boolean;
+    __menuOpened: boolean;
+    __apiCalls: string[];
   }
 }
 
@@ -141,6 +143,71 @@ test("content script applies archive and delete through visible ChatGPT menu con
   await page.getByRole("button", { name: "Delete" }).click();
   await page.locator("#gptbd-root .dialog").getByRole("button", { name: "Delete" }).click();
   await expect(page.getByRole("link", { name: /beta release notes/i })).toHaveCount(0);
+});
+
+test("content script uses ChatGPT API before scoped UI fallback", async ({ page }) => {
+  await page.addInitScript(() => {
+    const storage: Record<string, unknown> = { "gptbd.bulkMode": true };
+    const originalFetch = window.fetch.bind(window);
+
+    window.__apiCalls = [];
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+
+      if (url.endsWith("/api/auth/session")) {
+        return new Response(JSON.stringify({ accessToken: "test-access-token-1234567890" }), {
+          headers: { "Content-Type": "application/json" },
+          status: 200
+        });
+      }
+
+      if (url.includes("/backend-api/conversation/beta")) {
+        window.__apiCalls.push(`${init?.method ?? "GET"} ${url} ${String(init?.body ?? "")}`);
+        document.getElementById("row-beta")?.remove();
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { "Content-Type": "application/json" },
+          status: 200
+        });
+      }
+
+      return originalFetch(input, init);
+    };
+
+    window.chrome = {
+      storage: {
+        local: {
+          get(key: string, callback: (items: Record<string, unknown>) => void) {
+            callback({ [key]: storage[key] });
+          },
+          set(items: Record<string, unknown>, callback?: () => void) {
+            Object.assign(storage, items);
+            callback?.();
+          }
+        }
+      },
+      runtime: {
+        onMessage: {
+          addListener() {
+            return undefined;
+          }
+        }
+      }
+    } as unknown as typeof chrome;
+  });
+
+  await page.goto(pathToFileURL(resolve("fixtures/sidebar.html")).toString());
+  await page.addScriptTag({ path: resolve("dist/assets/content.js") });
+  await page.waitForSelector("html[data-gptbd-ready='true']");
+
+  await page.getByRole("checkbox", { name: /select beta release notes/i }).click();
+  await page.getByRole("button", { name: "Delete" }).click();
+  await page.locator("#gptbd-root .dialog").getByRole("button", { name: "Delete" }).click();
+
+  await expect(page.getByRole("link", { name: /beta release notes/i })).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => window.__menuOpened)).toBe(false);
+  await expect
+    .poll(() => page.evaluate(() => window.__apiCalls.some((call) => call.includes('"is_visible":false'))))
+    .toBe(true);
 });
 
 test("content script does not click unrelated page buttons when delete confirmation is missing", async ({
