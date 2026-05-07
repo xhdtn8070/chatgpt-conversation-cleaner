@@ -102,6 +102,15 @@ test("popup switches between Korean and English UI", async ({ page }) => {
 
   await expect(page.getByRole("heading", { name: "정리" })).toBeVisible();
   await expect(page.getByRole("button", { name: "영어로 전환" })).toHaveText("EN");
+  await expect(page.getByText("모든 기능은 계속 무료예요.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "커피 한 잔 보내기" })).toHaveAttribute(
+    "href",
+    "https://www.buymeacoffee.com/tikim"
+  );
+  await expect(page.getByRole("link", { name: "GitHub에서 소스 보기" })).toHaveAttribute(
+    "href",
+    "https://github.com/xhdtn8070/chatgpt-conversation-cleaner"
+  );
   await expect(
     page.getByRole("switch", { name: "Conversation Cleaner 전체 켜기 또는 끄기" })
   ).toBeChecked();
@@ -122,6 +131,15 @@ test("popup switches between Korean and English UI", async ({ page }) => {
 
   await expect(page.getByRole("heading", { name: "Cleaner" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Switch language to Korean" })).toHaveText("KO");
+  await expect(page.getByText("All features stay free.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Buy me a coffee" })).toHaveAttribute(
+    "href",
+    "https://www.buymeacoffee.com/tikim"
+  );
+  await expect(page.getByRole("link", { name: "View source on GitHub" })).toHaveAttribute(
+    "href",
+    "https://github.com/xhdtn8070/chatgpt-conversation-cleaner"
+  );
   await expect.poll(() => page.evaluate(() => window.__popupStorage["gptbd.language"])).toBe("en");
 
   await page.getByRole("switch", { name: "Cleanup mode" }).click();

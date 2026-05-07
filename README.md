@@ -13,6 +13,14 @@
   <strong>API-first cleanup</strong> · <strong>Long-chat speed mode</strong> · <strong>No third-party servers</strong>
 </p>
 
+<p align="center">
+  <a href="https://www.buymeacoffee.com/tikim">
+    <img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=tikim&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" alt="Buy me a coffee">
+  </a>
+  <br>
+  <a href="https://github.com/xhdtn8070/chatgpt-conversation-cleaner">View source on GitHub</a>
+</p>
+
 ![Conversation Cleaner sidebar mockup](docs/ux-mockup.png)
 
 ## Why This Exists
@@ -66,6 +74,10 @@ The action order is:
 3. If one item fails, stop the batch and keep the remaining items selected.
 
 Speed mode is separate from cleanup actions. It only hides or reveals ChatGPT's existing message turn elements and does not modify archive/delete requests.
+
+## Support
+
+Conversation Cleaner stays fully open source and free to use. If it saves you time, you can support the project with a coffee: [Buy me a coffee](https://www.buymeacoffee.com/tikim).
 
 ## Install Locally
 

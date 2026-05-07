@@ -52,6 +52,10 @@ const speedStrategyPrehide = getElement<HTMLButtonElement>("speedStrategyPrehide
 const speedMetric = getElement<HTMLElement>("speedMetric");
 const speedSettingsSave = getElement<HTMLButtonElement>("speedSettingsSave");
 const speedSettingsSaved = getElement<HTMLElement>("speedSettingsSaved");
+const supportTitle = getElement<HTMLElement>("supportTitle");
+const supportText = getElement<HTMLElement>("supportText");
+const supportLink = getElement<HTMLAnchorElement>("supportLink");
+const sourceLink = getElement<HTMLAnchorElement>("sourceLink");
 const hint = getElement<HTMLElement>("hint");
 
 let currentState: ExtensionState | null = null;
@@ -331,6 +335,12 @@ function applyStaticCopy(): void {
   speedStrategyAfter.textContent = t("popupSpeedStrategyAfter");
   speedStrategyPrehide.textContent = t("popupSpeedStrategyPrehide");
   speedSettingsSave.textContent = t("popupSpeedSave");
+  supportTitle.textContent = t("popupSupportTitle");
+  supportText.textContent = t("popupSupportText");
+  supportLink.textContent = t("popupSupportLink");
+  supportLink.setAttribute("aria-label", t("popupSupportLink"));
+  sourceLink.textContent = t("popupSourceLink");
+  sourceLink.setAttribute("aria-label", t("popupSourceLink"));
   hint.textContent = t("popupHintInitial");
 }
 
