@@ -1,7 +1,15 @@
 node_modules/
 dist/
+build/
 coverage/
 playwright-report/
 test-results/
 .DS_Store
 *.log
+
+# Packaged release artifacts
+*.crx
+*.pem
+release/*.zip
+release/*.crx
+release/*.pem

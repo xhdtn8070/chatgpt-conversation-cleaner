@@ -9,6 +9,7 @@
     "dev": "vite --host 127.0.0.1",
     "hero": "node scripts/render-readme-hero.mjs",
     "icons": "node scripts/render-icons.mjs",
+    "store:screenshots": "node scripts/render-store-screenshots.mjs",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
