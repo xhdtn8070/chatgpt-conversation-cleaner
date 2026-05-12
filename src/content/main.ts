@@ -26,6 +26,7 @@ import { DOCUMENT_CSS, SHADOW_CSS } from "./styles";
 const ROOT_ID = "gptbd-root";
 const DOCUMENT_STYLE_ID = "gptbd-document-style";
 const CHECKBOX_TARGET_SELECTOR = '[data-gptbd-checkbox-target="true"]';
+const NOTICE_HIDE_MS = 3200;
 const STORAGE_KEYS = {
   extensionEnabled: "gptbd.enabled",
   bulkMode: "gptbd.bulkMode",
@@ -140,6 +141,7 @@ class BulkDeleteController {
   private dialogHost: HTMLElement;
   private busyShield: HTMLElement;
   private notice: HTMLElement;
+  private noticeTimer: number | null = null;
   private observer: MutationObserver;
   private refreshQueued = false;
   private isDeleting = false;
@@ -184,6 +186,10 @@ class BulkDeleteController {
     }
 
     this.suppressBulkRowNavigation(event);
+  };
+  private handleViewportScroll = (): void => {
+    this.syncSelectionLayerPositions();
+    this.scheduleRefresh();
   };
 
   constructor() {
@@ -472,7 +478,7 @@ class BulkDeleteController {
 
   private bindPageListeners(): void {
     window.addEventListener("resize", () => this.scheduleRefresh(), { passive: true });
-    window.addEventListener("scroll", () => this.scheduleRefresh(), { capture: true, passive: true });
+    window.addEventListener("scroll", this.handleViewportScroll, { capture: true, passive: true });
     document.addEventListener("pointerdown", this.handleBulkRowPointerDown, true);
     document.addEventListener("mousedown", this.handleBulkRowMouseDown, true);
     document.addEventListener("click", this.handleBulkRowClick, true);
@@ -539,6 +545,7 @@ class BulkDeleteController {
     button.type = "button";
     button.className = "checkbox-target";
     button.dataset.gptbdCheckboxTarget = "true";
+    button.dataset.gptbdConversationId = row.id;
     button.classList.toggle("is-pinned", row.isPinned);
     button.setAttribute("role", "checkbox");
     button.setAttribute("aria-checked", String(selected));
@@ -575,6 +582,32 @@ class BulkDeleteController {
     });
 
     return button;
+  }
+
+  private syncSelectionLayerPositions(): void {
+    if (!this.extensionEnabled || !this.bulkMode || this.isDeleting) {
+      return;
+    }
+
+    for (const button of this.checkboxLayer.querySelectorAll<HTMLElement>(
+      CHECKBOX_TARGET_SELECTOR
+    )) {
+      const id = button.dataset.gptbdConversationId;
+      const row = id ? this.rows.get(id) : undefined;
+
+      if (!row || !row.anchor.isConnected) {
+        button.hidden = true;
+        continue;
+      }
+
+      const layout = computeCheckboxLayout(row.anchor.getBoundingClientRect(), row.sidebarRect);
+      button.hidden = false;
+      button.style.left = `${layout.left}px`;
+      button.style.top = `${layout.top}px`;
+      button.style.width = `${layout.size}px`;
+      button.style.height = `${layout.size}px`;
+      button.style.setProperty("--gptbd-visible-size", `${layout.visibleSize}px`);
+    }
   }
 
   private forwardWheelToSidebar(row: ConversationRow, event: WheelEvent): void {
@@ -1022,16 +1055,29 @@ class BulkDeleteController {
   }
 
   private showNotice(message: string): void {
+    if (this.noticeTimer) {
+      window.clearTimeout(this.noticeTimer);
+      this.noticeTimer = null;
+    }
+
     this.notice.textContent = message;
     this.notice.hidden = false;
     this.renderNoticePosition();
+    this.noticeTimer = window.setTimeout(() => {
+      this.notice.hidden = true;
+      this.notice.textContent = "";
+      this.noticeTimer = null;
+    }, NOTICE_HIDE_MS);
   }
 
   private renderNoticePosition(): void {
     const sidebarRect = this.getSidebarRect();
-    this.notice.style.left = `${Math.max(sidebarRect.left + 8, 8)}px`;
-    this.notice.style.bottom = "12px";
-    this.notice.style.width = `${computeActionBarWidth(sidebarRect)}px`;
+    const left = Math.max(sidebarRect.left + 48, 8);
+    const rightGutter = 8;
+    const availableWidth = Math.max(180, sidebarRect.right - left - rightGutter);
+    this.notice.style.left = `${left}px`;
+    this.notice.style.bottom = "14px";
+    this.notice.style.width = `${Math.min(computeActionBarWidth(sidebarRect), availableWidth)}px`;
   }
 
   private toggleRowSelection(id: string, deferRender = false): void {

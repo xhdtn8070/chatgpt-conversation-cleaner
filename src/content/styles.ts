@@ -41,6 +41,7 @@ export const SHADOW_CSS = `
 }
 
 .checkbox-visual {
+  position: relative;
   display: block;
   width: var(--gptbd-visible-size);
   height: var(--gptbd-visible-size);
@@ -59,12 +60,15 @@ export const SHADOW_CSS = `
 .checkbox-target[aria-checked="true"] .checkbox-visual::after {
   content: "";
   display: block;
+  position: absolute;
+  top: 50%;
+  left: 50%;
   width: 5px;
   height: 9px;
-  margin: 1px auto 0;
+  margin: 0;
   border: solid white;
   border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
+  transform: translate(-50%, -58%) rotate(45deg);
 }
 
 .checkbox-target.is-pinned {
@@ -146,6 +150,7 @@ export const SHADOW_CSS = `
 
 .notice {
   position: fixed;
+  z-index: 4;
   max-width: 360px;
   padding: 10px 12px;
   border-radius: 8px;
@@ -155,6 +160,10 @@ export const SHADOW_CSS = `
   box-shadow: 0 10px 30px color-mix(in srgb, CanvasText 16%, transparent);
   font: 500 12px/1.35 ui-sans-serif, system-ui, sans-serif;
   pointer-events: none;
+}
+
+.notice[hidden] {
+  display: none;
 }
 
 .busy-shield {
