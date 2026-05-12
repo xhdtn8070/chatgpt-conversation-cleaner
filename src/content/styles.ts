@@ -13,73 +13,6 @@ export const SHADOW_CSS = `
   pointer-events: none;
 }
 
-.checkbox-target {
-  position: fixed;
-  display: grid;
-  place-items: center;
-  appearance: none;
-  z-index: 2;
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: CanvasText;
-  cursor: pointer;
-  pointer-events: auto;
-  transition: background-color 120ms ease, transform 120ms ease;
-}
-
-.checkbox-target:hover {
-  background: color-mix(in srgb, CanvasText 10%, transparent);
-}
-
-.checkbox-target:focus-visible {
-  outline: 2px solid #0f7a55;
-  outline-offset: 1px;
-}
-
-.checkbox-visual {
-  position: relative;
-  display: block;
-  width: var(--gptbd-visible-size);
-  height: var(--gptbd-visible-size);
-  border: 1.5px solid color-mix(in srgb, CanvasText 42%, transparent);
-  border-radius: 4px;
-  box-sizing: border-box;
-  background: color-mix(in srgb, Canvas 92%, transparent);
-  transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
-}
-
-.checkbox-target[aria-checked="true"] .checkbox-visual {
-  border-color: #0f7a55;
-  background: #0f7a55;
-}
-
-.checkbox-target[aria-checked="true"] .checkbox-visual::after {
-  content: "";
-  display: block;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 5px;
-  height: 9px;
-  margin: 0;
-  border: solid white;
-  border-width: 0 2px 2px 0;
-  transform: translate(-50%, -58%) rotate(45deg);
-}
-
-.checkbox-target.is-pinned {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.checkbox-target.is-pinned .checkbox-visual {
-  border-style: dashed;
-}
-
 .dialog button {
   flex: 0 0 auto;
   min-width: 0;
@@ -192,7 +125,83 @@ export const SHADOW_CSS = `
 export const DOCUMENT_CSS = `
 html.gptbd-bulk-active [data-gptbd-row="true"][href*="/c/"],
 html.gptbd-bulk-active [data-gptbd-row="true"] a[href*="/c/"] {
+  position: relative !important;
   padding-left: max(44px, 2.75rem) !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+html.gptbd-bulk-active [data-gptbd-checkbox-target="true"] {
+  position: absolute !important;
+  top: 50% !important;
+  left: 6px !important;
+  z-index: 2 !important;
+  display: grid !important;
+  place-items: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  transform: translateY(-50%) !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  background: transparent !important;
+  box-sizing: border-box !important;
+  color: CanvasText !important;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  transition: background-color 120ms ease !important;
+}
+
+html.gptbd-bulk-active [data-gptbd-checkbox-target="true"]:hover {
+  background: color-mix(in srgb, CanvasText 10%, transparent) !important;
+}
+
+html.gptbd-bulk-active [data-gptbd-checkbox-target="true"]:focus-visible {
+  outline: 2px solid #0f7a55 !important;
+  outline-offset: 1px !important;
+}
+
+html.gptbd-bulk-active [data-gptbd-checkbox-target="true"].is-pinned {
+  cursor: not-allowed !important;
+  opacity: 0.6 !important;
+}
+
+html.gptbd-bulk-active [data-gptbd-checkbox-target="true"] .gptbd-checkbox-visual {
+  position: relative !important;
+  display: block !important;
+  width: 16px !important;
+  height: 16px !important;
+  border: 1.5px solid color-mix(in srgb, CanvasText 42%, transparent) !important;
+  border-radius: 4px !important;
+  box-sizing: border-box !important;
+  background: color-mix(in srgb, Canvas 92%, transparent) !important;
+  transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease !important;
+}
+
+html.gptbd-bulk-active [data-gptbd-checkbox-target="true"][aria-checked="true"] .gptbd-checkbox-visual {
+  border-color: #0f7a55 !important;
+  background: #0f7a55 !important;
+}
+
+html.gptbd-bulk-active [data-gptbd-checkbox-target="true"][aria-checked="true"] .gptbd-checkbox-visual::after {
+  content: "" !important;
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  display: block !important;
+  width: 5px !important;
+  height: 9px !important;
+  margin: 0 !important;
+  border: solid white !important;
+  border-width: 0 2px 2px 0 !important;
+  transform: translate(-50%, -58%) rotate(45deg) !important;
+}
+
+html.gptbd-bulk-active [data-gptbd-checkbox-target="true"].is-pinned .gptbd-checkbox-visual {
+  border-style: dashed !important;
 }
 
 html.gptbd-bulk-active [data-gptbd-row-selected="true"] {

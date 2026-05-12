@@ -201,6 +201,13 @@ test("content script renders stable checkbox overlay and isolates row clicks", a
 
   const alphaCheckbox = page.getByRole("checkbox", { name: /select alpha planning thread/i });
   await expect(alphaCheckbox).toBeVisible();
+  await expect
+    .poll(() =>
+      alphaCheckbox.evaluate((element) =>
+        Boolean(element.parentElement?.matches('a[href*="/c/alpha"]'))
+      )
+    )
+    .toBe(true);
   await expect(page.locator("nav > [data-gptbd-action-bar='true']")).toHaveCount(1);
   await expect(page.locator("#row-alpha a")).toHaveCSS("padding-left", "44px");
 

@@ -1,5 +1,5 @@
 import { collectConversationRows, type ConversationRow } from "./dom";
-import { computeActionBarWidth, computeCheckboxLayout } from "./positioning";
+import { computeActionBarWidth } from "./positioning";
 import type {
   DeleteItemResult,
   DeleteSummary,
@@ -136,7 +136,6 @@ class BulkDeleteController {
   private host: HTMLElement;
   private shadow: ShadowRoot;
   private overlayRoot: HTMLElement;
-  private checkboxLayer: HTMLElement;
   private actionBar: HTMLElement;
   private dialogHost: HTMLElement;
   private busyShield: HTMLElement;
@@ -187,9 +186,15 @@ class BulkDeleteController {
 
     this.suppressBulkRowNavigation(event);
   };
-  private handleViewportScroll = (): void => {
-    this.syncSelectionLayerPositions();
-    this.scheduleRefresh();
+  private handleBulkSelectStart = (event: Event): void => {
+    if (!this.bulkMode || this.isDeleting) {
+      return;
+    }
+
+    if (this.isInjectedCheckboxEvent(event) || this.findRowFromEvent(event)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
   };
 
   constructor() {
@@ -211,8 +216,6 @@ class BulkDeleteController {
     this.overlayRoot.className = "overlay-root";
     this.overlayRoot.setAttribute("aria-label", t("overlayAria"));
 
-    this.checkboxLayer = document.createElement("div");
-    this.checkboxLayer.dataset.gptbdCheckboxLayer = "true";
     this.actionBar = document.createElement("div");
     this.actionBar.dataset.gptbdActionBar = "true";
     this.dialogHost = document.createElement("div");
@@ -223,12 +226,7 @@ class BulkDeleteController {
     this.notice.className = "notice";
     this.notice.hidden = true;
 
-    this.overlayRoot.append(
-      this.checkboxLayer,
-      this.dialogHost,
-      this.busyShield,
-      this.notice
-    );
+    this.overlayRoot.append(this.dialogHost, this.busyShield, this.notice);
     this.shadow.append(this.overlayRoot);
 
     this.observer = new MutationObserver((mutations) => {
@@ -478,10 +476,10 @@ class BulkDeleteController {
 
   private bindPageListeners(): void {
     window.addEventListener("resize", () => this.scheduleRefresh(), { passive: true });
-    window.addEventListener("scroll", this.handleViewportScroll, { capture: true, passive: true });
     document.addEventListener("pointerdown", this.handleBulkRowPointerDown, true);
     document.addEventListener("mousedown", this.handleBulkRowMouseDown, true);
     document.addEventListener("click", this.handleBulkRowClick, true);
+    document.addEventListener("selectstart", this.handleBulkSelectStart, true);
   }
 
   private scheduleRefresh(): void {
@@ -527,109 +525,100 @@ class BulkDeleteController {
   }
 
   private renderSelectionLayer(): void {
-    this.checkboxLayer.replaceChildren();
-
     if (!this.extensionEnabled || !this.bulkMode || this.isDeleting) {
+      this.clearInjectedCheckboxTargets();
       return;
     }
 
+    const currentIds = new Set(this.rows.keys());
+    this.clearInjectedCheckboxTargets(currentIds);
+
     for (const row of this.rows.values()) {
-      this.checkboxLayer.append(this.createCheckboxTarget(row));
+      this.syncRowCheckboxTarget(row);
     }
   }
 
-  private createCheckboxTarget(row: ConversationRow): HTMLButtonElement {
-    const layout = computeCheckboxLayout(row.rect, row.sidebarRect);
-    const button = document.createElement("button");
+  private syncRowCheckboxTarget(row: ConversationRow): void {
     const selected = this.selectedIds.has(row.id);
-    button.type = "button";
-    button.className = "checkbox-target";
-    button.dataset.gptbdCheckboxTarget = "true";
-    button.dataset.gptbdConversationId = row.id;
-    button.classList.toggle("is-pinned", row.isPinned);
-    button.setAttribute("role", "checkbox");
-    button.setAttribute("aria-checked", String(selected));
-    button.setAttribute(
+    const target = this.ensureRowCheckboxTarget(row);
+    target.classList.toggle("is-pinned", row.isPinned);
+    target.setAttribute("aria-checked", String(selected));
+    target.setAttribute(
       "aria-label",
       row.isPinned
         ? t("pinnedSelectAria", { title: row.title })
         : t("rowSelectAria", { title: row.title })
     );
-    button.toggleAttribute("data-pinned", row.isPinned);
-    button.style.left = `${layout.left}px`;
-    button.style.top = `${layout.top}px`;
-    button.style.width = `${layout.size}px`;
-    button.style.height = `${layout.size}px`;
-    button.style.setProperty("--gptbd-visible-size", `${layout.visibleSize}px`);
+    target.toggleAttribute("data-pinned", row.isPinned);
+  }
+
+  private ensureRowCheckboxTarget(row: ConversationRow): HTMLElement {
+    const existing = findInjectedCheckboxTarget(row.anchor);
+
+    if (existing) {
+      existing.dataset.gptbdConversationId = row.id;
+      return existing;
+    }
+
+    const target = document.createElement("span");
+    target.className = "gptbd-checkbox-target";
+    target.dataset.gptbdCheckboxTarget = "true";
+    target.dataset.gptbdConversationId = row.id;
+    target.setAttribute("role", "checkbox");
+    target.tabIndex = 0;
 
     const visual = document.createElement("span");
-    visual.className = "checkbox-visual";
-    button.append(visual);
+    visual.className = "gptbd-checkbox-visual";
+    target.append(visual);
 
-    button.addEventListener("click", (event) => {
+    target.addEventListener("pointerdown", stopSelectionEvent);
+    target.addEventListener("mousedown", stopSelectionEvent);
+    target.addEventListener("selectstart", stopSelectionEvent);
+    target.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-
-      if (row.isPinned) {
-        this.showPinnedNotice(row);
+      this.activateInjectedCheckbox(target);
+    });
+    target.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") {
         return;
       }
 
-      this.toggleRowSelection(row.id);
-    });
-    button.addEventListener("wheel", (event) => this.forwardWheelToSidebar(row, event), {
-      passive: false
+      event.preventDefault();
+      event.stopPropagation();
+      this.activateInjectedCheckbox(target);
     });
 
-    return button;
+    row.anchor.prepend(target);
+    return target;
   }
 
-  private syncSelectionLayerPositions(): void {
-    if (!this.extensionEnabled || !this.bulkMode || this.isDeleting) {
+  private activateInjectedCheckbox(target: HTMLElement): void {
+    const id = target.dataset.gptbdConversationId;
+    const row = id ? this.rows.get(id) : undefined;
+
+    if (!id || !row) {
       return;
     }
 
-    for (const button of this.checkboxLayer.querySelectorAll<HTMLElement>(
-      CHECKBOX_TARGET_SELECTOR
-    )) {
-      const id = button.dataset.gptbdConversationId;
-      const row = id ? this.rows.get(id) : undefined;
+    if (row.isPinned) {
+      this.showPinnedNotice(row);
+      return;
+    }
 
-      if (!row || !row.anchor.isConnected) {
-        button.hidden = true;
+    this.toggleRowSelection(id);
+  }
+
+  private clearInjectedCheckboxTargets(keepIds = new Set<string>()): void {
+    for (const target of document.querySelectorAll<HTMLElement>(CHECKBOX_TARGET_SELECTOR)) {
+      const id = target.dataset.gptbdConversationId;
+
+      if (id && keepIds.has(id) && target.closest('a[href*="/c/"]')) {
         continue;
       }
 
-      const layout = computeCheckboxLayout(row.anchor.getBoundingClientRect(), row.sidebarRect);
-      button.hidden = false;
-      button.style.left = `${layout.left}px`;
-      button.style.top = `${layout.top}px`;
-      button.style.width = `${layout.size}px`;
-      button.style.height = `${layout.size}px`;
-      button.style.setProperty("--gptbd-visible-size", `${layout.visibleSize}px`);
+      target.remove();
     }
-  }
-
-  private forwardWheelToSidebar(row: ConversationRow, event: WheelEvent): void {
-    const scroller = findScrollContainer(row.anchor);
-
-    if (!scroller) {
-      return;
-    }
-
-    event.preventDefault();
-    event.stopPropagation();
-
-    const scale =
-      event.deltaMode === WheelEvent.DOM_DELTA_LINE
-        ? 16
-        : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
-          ? scroller.clientHeight
-          : 1;
-
-    scroller.scrollTop += event.deltaY * scale;
-    scroller.scrollLeft += event.deltaX * scale;
-    this.scheduleRefresh();
   }
 
   private renderActionBar(): void {
@@ -1112,6 +1101,7 @@ class BulkDeleteController {
         nodes.every(
           (node) =>
             node === this.actionBar ||
+            isManagedCheckboxNode(node) ||
             isManagedSpeedNode(node) ||
             (node instanceof Node && this.actionBar.contains(node))
         ))
@@ -1893,23 +1883,22 @@ function isManagedSpeedNode(node: Node): boolean {
   return Boolean(node.closest(".gptbd-speed-panel,.gptbd-speed-toast"));
 }
 
-function findScrollContainer(anchor: HTMLElement): HTMLElement | null {
-  let current: HTMLElement | null = anchor.parentElement;
-
-  while (current && current !== document.documentElement) {
-    const style = window.getComputedStyle(current);
-
-    if (
-      /(auto|scroll|overlay)/.test(style.overflowY) &&
-      current.scrollHeight > current.clientHeight + 1
-    ) {
-      return current;
-    }
-
-    current = current.parentElement;
+function isManagedCheckboxNode(node: Node): boolean {
+  if (!(node instanceof HTMLElement)) {
+    return Boolean(
+      node.parentNode instanceof HTMLElement &&
+        node.parentNode.closest(CHECKBOX_TARGET_SELECTOR)
+    );
   }
 
-  return null;
+  return Boolean(node.matches(CHECKBOX_TARGET_SELECTOR) || node.closest(CHECKBOX_TARGET_SELECTOR));
+}
+
+function findInjectedCheckboxTarget(anchor: HTMLAnchorElement): HTMLElement | null {
+  return Array.from(anchor.children).find(
+    (element): element is HTMLElement =>
+      element instanceof HTMLElement && element.matches(CHECKBOX_TARGET_SELECTOR)
+  ) ?? null;
 }
 
 if (!window.__gptbdController) {
