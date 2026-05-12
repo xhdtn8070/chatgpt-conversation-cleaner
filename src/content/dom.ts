@@ -124,13 +124,9 @@ export function isProbablySidebarConversation(
     return rect.left < Math.min(520, window.innerWidth * 0.5);
   }
 
-  const overlapsSidebar =
-    rect.left < sidebarRect.right &&
-    rect.right > sidebarRect.left &&
-    rect.top < sidebarRect.bottom &&
-    rect.bottom > sidebarRect.top;
+  const horizontallyOverlapsSidebar = rect.left < sidebarRect.right && rect.right > sidebarRect.left;
 
-  return overlapsSidebar;
+  return horizontallyOverlapsSidebar;
 }
 
 function resolveTitle(anchor: HTMLAnchorElement): string {
