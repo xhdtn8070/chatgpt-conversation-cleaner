@@ -1,6 +1,6 @@
 {
   "name": "chatgpt-conversation-cleaner",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "A Manifest V3 Chrome extension for safer bulk archive/delete actions in the ChatGPT sidebar.",
   "license": "MIT",

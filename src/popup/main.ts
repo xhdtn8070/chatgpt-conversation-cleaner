@@ -22,6 +22,7 @@ const extensionEnabled = getElement<HTMLInputElement>("extensionEnabled");
 const extensionEnabledSwitch = getElement<HTMLLabelElement>("extensionEnabledSwitch");
 const languageToggle = getElement<HTMLButtonElement>("languageToggle");
 const appHeading = getElement<HTMLElement>("appHeading");
+const extensionVersion = getElement<HTMLElement>("extensionVersion");
 const cleanupModeLabel = getElement<HTMLElement>("cleanupModeLabel");
 const cleanupModeHint = getElement<HTMLElement>("cleanupModeHint");
 const cleanupModeToggle = getElement<HTMLButtonElement>("cleanupModeToggle");
@@ -62,6 +63,7 @@ const SPONSOR_URL = "https://github.com/sponsors/xhdtn8070";
 
 let currentState: ExtensionState | null = null;
 let currentLanguage: LanguageCode = getDefaultLanguage();
+let lastKnownExtensionEnabled: boolean = FIRST_RUN_DEFAULTS.extensionEnabled;
 let metricRefreshTimer: number | null = null;
 let metricRefreshAttempts = 0;
 
@@ -69,10 +71,7 @@ setActiveLanguage(currentLanguage);
 applyStaticCopy();
 
 extensionEnabled.addEventListener("change", () => {
-  void sendAndRender({
-    type: MESSAGE_TYPES.setExtensionEnabled,
-    enabled: extensionEnabled.checked
-  });
+  void setMasterEnabled(extensionEnabled.checked);
 });
 
 languageToggle.addEventListener("click", () => {
@@ -133,6 +132,8 @@ void init();
 
 async function init(): Promise<void> {
   applyLanguage(await loadLanguagePreference());
+  lastKnownExtensionEnabled = await loadExtensionEnabledPreference();
+  extensionEnabled.checked = lastKnownExtensionEnabled;
   await refresh();
 }
 
@@ -155,6 +156,26 @@ async function sendAndRender(message: ExtensionMessage): Promise<void> {
     renderUnavailable();
   } finally {
     setBusy(false);
+  }
+}
+
+async function setMasterEnabled(enabled: boolean): Promise<void> {
+  lastKnownExtensionEnabled = enabled;
+  extensionEnabled.checked = enabled;
+  await persistExtensionEnabledPreference(enabled);
+  setBusy(true);
+
+  try {
+    const state = await sendToActiveTab<ExtensionState>({
+      type: MESSAGE_TYPES.setExtensionEnabled,
+      enabled
+    });
+    renderState(state);
+  } catch {
+    renderUnavailable();
+  } finally {
+    setBusy(false);
+    extensionEnabled.checked = lastKnownExtensionEnabled;
   }
 }
 
@@ -190,6 +211,7 @@ function renderState(state: ExtensionState): void {
   }
 
   currentState = state;
+  lastKnownExtensionEnabled = state.extensionEnabled;
   extensionEnabled.checked = state.extensionEnabled;
   extensionEnabled.disabled = state.isDeleting;
   cleanupModeToggle.setAttribute("aria-checked", String(state.bulkMode));
@@ -235,8 +257,8 @@ function renderState(state: ExtensionState): void {
 function renderUnavailable(): void {
   clearMetricRefresh();
   currentState = null;
-  extensionEnabled.checked = false;
-  extensionEnabled.disabled = true;
+  extensionEnabled.checked = lastKnownExtensionEnabled;
+  extensionEnabled.disabled = false;
   cleanupModeToggle.setAttribute("aria-checked", String(FIRST_RUN_DEFAULTS.bulkMode));
   cleanupDetails.hidden = true;
   statusText.textContent = t("popupStatusOpenChatGpt");
@@ -280,8 +302,8 @@ function clearMetricRefresh(): void {
 }
 
 function setBusy(isBusy: boolean): void {
-  extensionEnabled.disabled = isBusy;
   const state = currentState;
+  extensionEnabled.disabled = Boolean(state?.isDeleting);
   const canUseActions =
     Boolean(state?.extensionEnabled) && Boolean(state?.bulkMode) && !state?.isDeleting && !isBusy;
   selectAll.disabled = !canUseActions || (state?.visibleCount ?? 0) === 0;
@@ -307,6 +329,8 @@ function applyStaticCopy(): void {
   document.documentElement.lang = currentLanguage;
   document.title = t("extensionName");
   appHeading.textContent = t("popupHeading");
+  extensionVersion.textContent = `v${getExtensionVersion()}`;
+  extensionVersion.title = `Version ${getExtensionVersion()}`;
   extensionEnabledSwitch.title = t("popupMasterToggleTitle");
   extensionEnabled.setAttribute("aria-label", t("popupMasterToggleTitle"));
   languageToggle.textContent = nextLanguage.toUpperCase();
@@ -361,8 +385,22 @@ async function loadLanguagePreference(): Promise<LanguagePreference> {
   }
 }
 
+async function loadExtensionEnabledPreference(): Promise<boolean> {
+  try {
+    const items = await chrome.storage.local.get(STORAGE_KEYS.extensionEnabled);
+    const value = items[STORAGE_KEYS.extensionEnabled];
+    return typeof value === "boolean" ? value : FIRST_RUN_DEFAULTS.extensionEnabled;
+  } catch {
+    return FIRST_RUN_DEFAULTS.extensionEnabled;
+  }
+}
+
 async function persistLanguagePreference(language: LanguagePreference): Promise<void> {
   await chrome.storage.local.set({ [STORAGE_KEYS.language]: language });
+}
+
+async function persistExtensionEnabledPreference(enabled: boolean): Promise<void> {
+  await chrome.storage.local.set({ [STORAGE_KEYS.extensionEnabled]: enabled });
 }
 
 function renderSpeedSettings(state: ExtensionState): void {
@@ -435,6 +473,10 @@ function clampNumber(value: number, min: number, max: number): number {
 
 function formatSeconds(ms: number): string {
   return (ms / 1000).toFixed(2);
+}
+
+function getExtensionVersion(): string {
+  return chrome.runtime?.getManifest?.().version ?? "dev";
 }
 
 function getElement<T extends HTMLElement>(id: string): T {

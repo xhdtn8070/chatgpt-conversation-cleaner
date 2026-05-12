@@ -24,6 +24,11 @@ test("popup switches between Korean and English UI", async ({ page }) => {
     window.__popupStorage = storage;
     window.__createdTabs = [];
     window.chrome = {
+      runtime: {
+        getManifest() {
+          return { version: "0.1.1" };
+        }
+      },
       i18n: {
         getUILanguage() {
           return "ko-KR";
@@ -102,6 +107,7 @@ test("popup switches between Korean and English UI", async ({ page }) => {
   await page.addScriptTag({ path: resolve("dist/assets/popup.js") });
 
   await expect(page.getByRole("heading", { name: "정리" })).toBeVisible();
+  await expect(page.getByText("v0.1.1")).toBeVisible();
   await expect(page.getByRole("button", { name: "영어로 전환" })).toHaveText("EN");
   await expect(page.getByText("무료 오픈소스 유지를 GitHub Sponsors로 응원해주세요.")).toBeVisible();
   await page.getByRole("button", { name: "GitHub Sponsors로 후원하기" }).click();
@@ -203,4 +209,65 @@ test("popup switches between Korean and English UI", async ({ page }) => {
   );
   await expect(page.getByRole("region", { name: "Speed mode settings" })).toBeVisible();
   await expect(page.getByText("Extension off")).toBeVisible();
+});
+
+test("popup master switch persists even when the active tab is unavailable", async ({ page }) => {
+  await page.addInitScript(() => {
+    const storage: Record<string, unknown> = {
+      "gptbd.enabled": true,
+      "gptbd.language": "en"
+    };
+
+    window.__popupStorage = storage;
+    window.__createdTabs = [];
+    window.chrome = {
+      runtime: {
+        getManifest() {
+          return { version: "0.1.1" };
+        }
+      },
+      i18n: {
+        getUILanguage() {
+          return "en-US";
+        }
+      },
+      storage: {
+        local: {
+          async get(key: string) {
+            return { [key]: storage[key] };
+          },
+          async set(items: Record<string, unknown>) {
+            Object.assign(storage, items);
+          }
+        }
+      },
+      tabs: {
+        async query() {
+          return [{ id: 1 }];
+        },
+        async create(createProperties: { url?: string }) {
+          window.__createdTabs.push(createProperties.url ?? "");
+          return { id: 2 };
+        },
+        async sendMessage() {
+          throw new Error("No receiving end");
+        }
+      }
+    } as unknown as typeof chrome;
+  });
+
+  await page.setViewportSize({ width: 340, height: 600 });
+  await page.goto(pathToFileURL(resolve("dist/popup.html")).toString());
+  await page.addScriptTag({ path: resolve("dist/assets/popup.js") });
+
+  const masterSwitch = page.getByRole("switch", { name: "Turn Conversation Cleaner on or off" });
+  await expect(page.getByText("v0.1.1")).toBeVisible();
+  await expect(masterSwitch).toBeEnabled();
+  await expect(masterSwitch).toBeChecked();
+  await expect(page.getByText("Open chatgpt.com, then reopen this popup to control Bulk mode.")).toBeVisible();
+
+  await masterSwitch.click();
+  await expect(masterSwitch).not.toBeChecked();
+  await expect(masterSwitch).toBeEnabled();
+  await expect.poll(() => page.evaluate(() => window.__popupStorage["gptbd.enabled"])).toBe(false);
 });
