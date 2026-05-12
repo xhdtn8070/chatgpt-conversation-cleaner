@@ -17,28 +17,18 @@ export const SHADOW_CSS = `
   position: fixed;
   display: grid;
   place-items: center;
+  appearance: none;
   z-index: 2;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: inherit;
+  color: CanvasText;
   cursor: pointer;
   pointer-events: auto;
   transition: background-color 120ms ease, transform 120ms ease;
-}
-
-.row-hit-target {
-  position: fixed;
-  z-index: 1;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  cursor: pointer;
-  pointer-events: auto;
-}
-
-.row-hit-target:hover {
-  background: color-mix(in srgb, CanvasText 7%, transparent);
 }
 
 .checkbox-target:hover {
@@ -51,6 +41,7 @@ export const SHADOW_CSS = `
 }
 
 .checkbox-visual {
+  display: block;
   width: var(--gptbd-visible-size);
   height: var(--gptbd-visible-size);
   border: 1.5px solid color-mix(in srgb, CanvasText 42%, transparent);
@@ -190,6 +181,7 @@ export const SHADOW_CSS = `
 `;
 
 export const DOCUMENT_CSS = `
+html.gptbd-bulk-active [data-gptbd-row="true"][href*="/c/"],
 html.gptbd-bulk-active [data-gptbd-row="true"] a[href*="/c/"] {
   padding-left: max(44px, 2.75rem) !important;
 }

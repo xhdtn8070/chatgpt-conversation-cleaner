@@ -11,6 +11,11 @@ declare global {
   }
 }
 
+function refreshController() {
+  const controller = window.__gptbdController as unknown as { refresh: () => void } | undefined;
+  controller?.refresh();
+}
+
 test("content script uses first-run defaults from browser language", async ({ page }) => {
   await page.addInitScript(() => {
     window.chrome = {
@@ -272,6 +277,44 @@ test("content script renders stable checkbox overlay and isolates row clicks", a
   await expect(page.locator("#row-gamma")).toHaveAttribute("data-gptbd-row-selected", "true");
   await expect.poll(() => page.evaluate(() => window.__navigated)).toBe(false);
   await expect(page.getByRole("button", { name: "Deselect all" })).toHaveText("None");
+
+  await page.evaluate(() => {
+    const list = document.querySelector("ol");
+    for (let index = 0; index < 30; index += 1) {
+      const item = document.createElement("li");
+      const link = document.createElement("a");
+      link.href = `/c/extra-${index}`;
+      link.setAttribute("aria-label", `Extra scroll row ${index}`);
+      link.textContent = `Extra scroll row ${index}`;
+      item.append(link);
+      list?.append(item);
+    }
+    const controller = window.__gptbdController as unknown as { refresh: () => void } | undefined;
+    controller?.refresh();
+  });
+
+  const scrollBefore = await page.locator("nav").evaluate((element) => element.scrollTop);
+  await page.mouse.move(betaLinkBox!.x + Math.min(80, betaLinkBox!.width / 2), betaLinkBox!.y + betaLinkBox!.height / 2);
+  await page.mouse.wheel(0, 420);
+  await expect.poll(() => page.locator("nav").evaluate((element) => element.scrollTop)).toBeGreaterThan(scrollBefore);
+
+  await page.locator("nav").evaluate((element) => {
+    element.scrollTop = 0;
+  });
+  await page.evaluate(refreshController);
+  const checkboxBox = await alphaCheckbox.boundingBox();
+  expect(checkboxBox).not.toBeNull();
+  const checkboxScrollBefore = await page.locator("nav").evaluate((element) => element.scrollTop);
+  await page.mouse.move(checkboxBox!.x + checkboxBox!.width / 2, checkboxBox!.y + checkboxBox!.height / 2);
+  await page.mouse.wheel(0, 420);
+  await expect
+    .poll(() => page.locator("nav").evaluate((element) => element.scrollTop))
+    .toBeGreaterThan(checkboxScrollBefore);
+
+  await page.locator("nav").evaluate((element) => {
+    element.scrollTop = 0;
+  });
+  await page.evaluate(refreshController);
 
   await page.getByRole("checkbox", { name: "Pinned design review is pinned. Unpin before selecting." }).click();
   await expect(page.locator("#row-pinned")).not.toHaveAttribute("data-gptbd-row-selected", "true");

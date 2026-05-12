@@ -25,6 +25,7 @@ import { DOCUMENT_CSS, SHADOW_CSS } from "./styles";
 
 const ROOT_ID = "gptbd-root";
 const DOCUMENT_STYLE_ID = "gptbd-document-style";
+const CHECKBOX_TARGET_SELECTOR = '[data-gptbd-checkbox-target="true"]';
 const STORAGE_KEYS = {
   extensionEnabled: "gptbd.enabled",
   bulkMode: "gptbd.bulkMode",
@@ -148,6 +149,10 @@ class BulkDeleteController {
       return;
     }
 
+    if (this.isInjectedCheckboxEvent(event)) {
+      return;
+    }
+
     const row = this.findRowFromEvent(event);
 
     if (!row) {
@@ -163,10 +168,18 @@ class BulkDeleteController {
       return;
     }
 
+    if (this.isInjectedCheckboxEvent(event)) {
+      return;
+    }
+
     this.suppressBulkRowNavigation(event);
   };
   private handleBulkRowClick = (event: MouseEvent): void => {
     if (!this.bulkMode || this.isDeleting || event.button !== 0) {
+      return;
+    }
+
+    if (this.isInjectedCheckboxEvent(event)) {
       return;
     }
 
@@ -193,6 +206,7 @@ class BulkDeleteController {
     this.overlayRoot.setAttribute("aria-label", t("overlayAria"));
 
     this.checkboxLayer = document.createElement("div");
+    this.checkboxLayer.dataset.gptbdCheckboxLayer = "true";
     this.actionBar = document.createElement("div");
     this.actionBar.dataset.gptbdActionBar = "true";
     this.dialogHost = document.createElement("div");
@@ -514,44 +528,8 @@ class BulkDeleteController {
     }
 
     for (const row of this.rows.values()) {
-      this.checkboxLayer.append(this.createRowHitTarget(row));
-    }
-
-    for (const row of this.rows.values()) {
       this.checkboxLayer.append(this.createCheckboxTarget(row));
     }
-  }
-
-  private createRowHitTarget(row: ConversationRow): HTMLButtonElement {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "row-hit-target";
-    button.setAttribute("aria-label", t("rowToggleAria", { title: row.title }));
-    button.style.left = `${Math.max(row.sidebarRect.left, row.rect.left)}px`;
-    button.style.top = `${row.rect.top}px`;
-    button.style.width = `${Math.max(0, Math.min(row.rect.right, row.sidebarRect.right) - Math.max(row.sidebarRect.left, row.rect.left))}px`;
-    button.style.height = `${row.rect.height}px`;
-
-    button.addEventListener("pointerdown", (event) => {
-      if (event.button !== 0) {
-        return;
-      }
-
-      event.preventDefault();
-      event.stopPropagation();
-
-      if (row.isPinned) {
-        this.showPinnedNotice(row);
-        return;
-      }
-
-      this.toggleRowSelection(row.id, true);
-    });
-
-    button.addEventListener("mousedown", stopSelectionEvent);
-    button.addEventListener("click", stopSelectionEvent);
-
-    return button;
   }
 
   private createCheckboxTarget(row: ConversationRow): HTMLButtonElement {
@@ -560,6 +538,7 @@ class BulkDeleteController {
     const selected = this.selectedIds.has(row.id);
     button.type = "button";
     button.className = "checkbox-target";
+    button.dataset.gptbdCheckboxTarget = "true";
     button.classList.toggle("is-pinned", row.isPinned);
     button.setAttribute("role", "checkbox");
     button.setAttribute("aria-checked", String(selected));
@@ -591,8 +570,33 @@ class BulkDeleteController {
 
       this.toggleRowSelection(row.id);
     });
+    button.addEventListener("wheel", (event) => this.forwardWheelToSidebar(row, event), {
+      passive: false
+    });
 
     return button;
+  }
+
+  private forwardWheelToSidebar(row: ConversationRow, event: WheelEvent): void {
+    const scroller = findScrollContainer(row.anchor);
+
+    if (!scroller) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const scale =
+      event.deltaMode === WheelEvent.DOM_DELTA_LINE
+        ? 16
+        : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
+          ? scroller.clientHeight
+          : 1;
+
+    scroller.scrollTop += event.deltaY * scale;
+    scroller.scrollLeft += event.deltaX * scale;
+    this.scheduleRefresh();
   }
 
   private renderActionBar(): void {
@@ -908,6 +912,11 @@ class BulkDeleteController {
     }
 
     return null;
+  }
+
+  private isInjectedCheckboxEvent(event: Event): boolean {
+    const target = event.target;
+    return target instanceof Element && Boolean(target.closest(CHECKBOX_TARGET_SELECTOR));
   }
 
   private suppressBulkRowNavigation(event: MouseEvent): void {
@@ -1836,6 +1845,25 @@ function isManagedSpeedNode(node: Node): boolean {
   }
 
   return Boolean(node.closest(".gptbd-speed-panel,.gptbd-speed-toast"));
+}
+
+function findScrollContainer(anchor: HTMLElement): HTMLElement | null {
+  let current: HTMLElement | null = anchor.parentElement;
+
+  while (current && current !== document.documentElement) {
+    const style = window.getComputedStyle(current);
+
+    if (
+      /(auto|scroll|overlay)/.test(style.overflowY) &&
+      current.scrollHeight > current.clientHeight + 1
+    ) {
+      return current;
+    }
+
+    current = current.parentElement;
+  }
+
+  return null;
 }
 
 if (!window.__gptbdController) {
